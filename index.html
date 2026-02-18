@@ -59,6 +59,15 @@
 
         <!-- Main Content -->
         <main class="flex-1 lg:ml-64 p-6 md:p-10">
+            <!-- Pesan Error Permission -->
+            <div id="permission-error-banner" class="hidden mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl flex items-start gap-3">
+                <i data-lucide="alert-circle" class="shrink-0 mt-0.5"></i>
+                <div>
+                    <p class="font-bold text-sm text-rose-800">Firestore Permission Error</p>
+                    <p class="text-xs mt-1">Aplikasi tidak memiliki izin untuk membaca data. Pastikan Anda sudah mengatur <b>Firestore Rules</b> di Firebase Console Anda menjadi 'allow read, write: if request.auth != null;'.</p>
+                </div>
+            </div>
+
             <!-- Dashboard -->
             <section id="tab-dashboard" class="tab-content space-y-8">
                 <header>
@@ -116,11 +125,17 @@
 
             <!-- Laporan & Pengaturan -->
             <section id="tab-laporan" class="tab-content hidden space-y-6">
-                <div class="bg-white p-8 rounded-3xl">Fitur Laporan Siap Cetak</div>
+                <div class="bg-white p-8 rounded-3xl text-center">
+                    <p class="text-slate-500 mb-4">Fitur Laporan Siap Cetak (Khusus Admin)</p>
+                    <button onclick="window.print()" class="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold">Cetak Laporan</button>
+                </div>
             </section>
             
             <section id="tab-settings" class="tab-content hidden space-y-6">
-                <div class="bg-white p-8 rounded-3xl">Pengaturan Instansi Masjid</div>
+                <div class="bg-white p-8 rounded-3xl">
+                    <h3 class="text-xl font-bold mb-4">Profil Admin</h3>
+                    <div id="admin-info" class="text-slate-600">Memuat info...</div>
+                </div>
             </section>
         </main>
     </div>
@@ -129,9 +144,11 @@
     <div id="login-modal" class="hidden fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl">
             <h3 class="text-2xl font-bold mb-6 text-center">Login Admin</h3>
+            <p class="text-sm text-slate-500 text-center mb-6">Gunakan akun yang terdaftar di Firebase Console Anda.</p>
             <form onsubmit="handleLogin(event)" class="space-y-4">
-                <input id="login-pass" type="password" placeholder="Password Admin" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center outline-emerald-500" required />
-                <button type="submit" class="w-full bg-emerald-600 text-white p-4 rounded-2xl font-bold shadow-lg">Masuk</button>
+                <input id="login-email" type="email" placeholder="Email Admin" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-emerald-500" required />
+                <input id="login-pass" type="password" placeholder="Password" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-emerald-500" required />
+                <button type="submit" id="login-submit-btn" class="w-full bg-emerald-600 text-white p-4 rounded-2xl font-bold shadow-lg">Masuk</button>
                 <button type="button" onclick="closeModal('login-modal')" class="w-full text-slate-400 text-sm">Batal</button>
             </form>
         </div>
@@ -160,7 +177,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ==========================================================
@@ -169,19 +186,17 @@
         let firebaseConfig = {};
         let appId = 'masjid-live-prod';
 
-        // Deteksi apakah berjalan di editor Canvas atau hosting sendiri
         if (typeof __firebase_config !== 'undefined' && __firebase_config !== "") {
             firebaseConfig = JSON.parse(__firebase_config);
             appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
         } else {
-            // SILAKAN ISI DATA INI JIKA ANDA MENGGUNAKAN HOSTING SENDIRI (GitHub/Firebase Hosting)
             firebaseConfig = {
-                apiKey: "AIzaSyAZHKit1-zjq_DAYOpQnf-3AIOwF7QVXlk",
-                authDomain: "kasmasjidsm.firebaseapp.com",
-                projectId: "kasmasjidsm",
-                storageBucket: "kasmasjidsm.firebasestorage.app",
-                messagingSenderId: "114589495617",
-                appId: "1:114589495617:web:7d52f5f94dc847962a31c0"
+                apiKey: "ISI_API_KEY_ANDA",
+                authDomain: "PROJECT_ANDA.firebaseapp.com",
+                projectId: "PROJECT_ANDA",
+                storageBucket: "PROJECT_ANDA.appspot.com",
+                messagingSenderId: "NOMOR_SENDER",
+                appId: "APP_ID_ANDA"
             };
         }
         // ==========================================================
@@ -190,12 +205,11 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let userState = null;
-        let isAdminActive = localStorage.getItem('is_admin_active') === 'true';
+        let currentUser = null;
+        let isAdmin = false;
         let transactions = [];
         let unsubscribeTx = null;
 
-        // UI Helpers
         const formatIDR = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
         
         window.switchTab = (id) => {
@@ -207,89 +221,101 @@
 
         window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
 
-        window.toggleAuth = () => {
-            if (isAdminActive) {
-                isAdminActive = false;
-                localStorage.setItem('is_admin_active', 'false');
-                updateAdminUI();
+        window.toggleAuth = async () => {
+            if (isAdmin) {
+                if(confirm("Apakah Anda ingin logout dari akun admin?")) {
+                    await signOut(auth);
+                }
             } else {
                 document.getElementById('login-modal').classList.remove('hidden');
             }
         };
 
-        window.handleLogin = (e) => {
+        window.handleLogin = async (e) => {
             e.preventDefault();
+            const email = document.getElementById('login-email').value;
             const pass = document.getElementById('login-pass').value;
-            if (pass === 'admin123') {
-                isAdminActive = true;
-                localStorage.setItem('is_admin_active', 'true');
-                document.getElementById('login-pass').value = '';
+            const btn = document.getElementById('login-submit-btn');
+
+            btn.disabled = true;
+            btn.innerText = "Mengecek...";
+
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
                 closeModal('login-modal');
-                updateAdminUI();
-            } else {
-                alert("Password Admin Salah!");
+                document.getElementById('login-email').value = '';
+                document.getElementById('login-pass').value = '';
+            } catch (err) {
+                console.error(err);
+                alert("Login Gagal: Pastikan Email & Password benar, serta 'Email/Password' Method sudah aktif di Console Firebase.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Masuk";
             }
         };
 
-        function updateAdminUI() {
+        function updateUIState() {
             const btnText = document.getElementById('auth-btn-text');
             const badge = document.getElementById('badge-admin');
+            const adminInfo = document.getElementById('admin-info');
             
-            if (isAdminActive) {
+            if (isAdmin) {
                 btnText.innerText = "Logout Admin";
-                badge.innerText = "Mode Admin";
+                badge.innerText = "Admin: " + (currentUser?.email?.split('@')[0] || "User");
                 badge.className = "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase inline-block border border-emerald-400 bg-emerald-500 text-white";
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+                if(adminInfo) adminInfo.innerHTML = `<p>Login sebagai: <b>${currentUser.email}</b></p><p class="text-xs opacity-60">UID: ${currentUser.uid}</p>`;
             } else {
                 btnText.innerText = "Login Admin";
-                badge.innerText = "Mode Tamu";
+                badge.innerText = "Mode Tamu (Read-Only)";
                 badge.className = "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase inline-block border border-white/20 bg-white/10";
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+                if(adminInfo) adminInfo.innerText = "Anda masuk sebagai pengunjung.";
             }
             lucide.createIcons();
             renderData();
         }
 
-        // Auth Logic (RULE 3)
-        const initializeAuthentication = async () => {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (err) {
-                console.error("Login Error:", err);
-            }
-        };
-
-        onAuthStateChanged(auth, (user) => {
-            userState = user;
+        // Auth Listener (RULE 3)
+        onAuthStateChanged(auth, async (user) => {
+            currentUser = user;
+            
             if (user) {
+                isAdmin = !user.isAnonymous;
                 startListeners();
-                updateAdminUI();
+                updateUIState();
+            } else {
+                isAdmin = false;
+                try {
+                    await signInAnonymously(auth);
+                } catch (e) {
+                    console.error("Gagal login anonim:", e);
+                }
             }
         });
 
-        initializeAuthentication();
-
         function startListeners() {
-            if (!userState) return;
+            if (!currentUser) return;
             if (unsubscribeTx) unsubscribeTx();
 
-            // PATH RULE 1: Menggunakan path dinamis agar kompatibel dengan lingkungan mana saja
-            const path = (typeof __firebase_config !== 'undefined') 
+            const path = (typeof __firebase_config !== 'undefined' && __firebase_config !== "") 
                 ? ['artifacts', appId, 'public', 'data', 'transactions']
                 : ['transactions'];
 
             const txColRef = collection(db, ...path);
             
+            // Tambahkan banner error jika gagal permission
             unsubscribeTx = onSnapshot(txColRef, (snapshot) => {
+                document.getElementById('permission-error-banner').classList.add('hidden');
                 transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 transactions.sort((a, b) => new Date(b.tgl) - new Date(a.tgl));
                 renderData();
             }, (error) => {
                 console.error("Firestore Error:", error);
+                if (error.code === 'permission-denied') {
+                    document.getElementById('permission-error-banner').classList.remove('hidden');
+                    document.getElementById('recent-activities').innerHTML = "Gagal memuat data karena masalah izin akses.";
+                }
             });
         }
 
@@ -310,7 +336,7 @@
                         <td class="p-6 text-right font-bold ${isMasuk ? 'text-emerald-600' : 'text-rose-600'}">
                             ${isMasuk ? '+' : '-'} ${formatIDR(nominal)}
                         </td>
-                        <td class="admin-only ${isAdminActive ? '' : 'hidden'} p-6 text-center">
+                        <td class="admin-only ${isAdmin ? '' : 'hidden'} p-6 text-center">
                             <button onclick="deleteTx('${t.id}')" class="text-rose-400 hover:text-rose-600 p-2"><i data-lucide="trash-2" size="16"></i></button>
                         </td>
                     </tr>
@@ -326,12 +352,13 @@
                     <span class="text-slate-700 font-medium">${t.uraian}</span>
                     <span class="font-bold ${t.jenis === 'Pemasukan' ? 'text-emerald-600' : 'text-rose-600'}">${formatIDR(t.nominal)}</span>
                 </div>
-            `).join('') || "Belum ada transaksi.";
+            `).join('') || (transactions.length === 0 ? "Belum ada transaksi." : "");
 
             lucide.createIcons();
         }
 
         window.openTxModal = () => {
+            if(!isAdmin) return alert("Hanya admin yang bisa menambah data.");
             document.getElementById('tx-form').reset();
             document.getElementById('tx-id').value = '';
             document.getElementById('tx-modal').classList.remove('hidden');
@@ -339,7 +366,7 @@
 
         window.handleSaveTx = async (e) => {
             e.preventDefault();
-            if(!isAdminActive || !userState) return;
+            if(!isAdmin || !currentUser) return;
             const fd = new FormData(e.target);
             const data = {
                 tgl: fd.get('tgl'),
@@ -350,20 +377,20 @@
             };
 
             try {
-                const path = (typeof __firebase_config !== 'undefined') 
+                const path = (typeof __firebase_config !== 'undefined' && __firebase_config !== "") 
                     ? ['artifacts', appId, 'public', 'data', 'transactions']
                     : ['transactions'];
                 await addDoc(collection(db, ...path), data);
                 closeModal('tx-modal');
             } catch (err) {
-                alert("Gagal simpan: " + err.message);
+                alert("Gagal simpan: Pastikan Firestore Rules mengizinkan penulisan. " + err.message);
             }
         };
 
         window.deleteTx = async (id) => {
-            if(!isAdminActive || !userState || !confirm("Hapus data?")) return;
+            if(!isAdmin || !currentUser || !confirm("Hapus data?")) return;
             try {
-                const path = (typeof __firebase_config !== 'undefined') 
+                const path = (typeof __firebase_config !== 'undefined' && __firebase_config !== "") 
                     ? ['artifacts', appId, 'public', 'data', 'transactions', id]
                     : ['transactions', id];
                 await deleteDoc(doc(db, ...path));
