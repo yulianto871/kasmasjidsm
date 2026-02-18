@@ -57,23 +57,31 @@
             border-radius: 12px;
         }
 
+        /* Utility for Admin Only */
+        .admin-only { display: none; }
+        .is-admin .admin-only { display: block; }
+        .is-admin .admin-only-flex { display: flex; }
+
         @media print {
             .no-print { display: none !important; }
             main { margin-left: 0 !important; padding: 0 !important; }
             .print-area { box-shadow: none !important; border: none !important; padding: 0 !important; }
             body { background: white; }
-            .sig-container { margin-top: 3rem !important; }
+            .sig-container { margin-top: 3rem !important; page-break-inside: avoid; }
         }
     </style>
 </head>
-<body class="min-h-screen text-slate-900">
+<body class="min-h-screen text-slate-900" id="app-body">
 
     <!-- Sidebar -->
     <aside class="fixed left-0 top-0 h-full w-64 gradient-bg text-white hidden lg:flex flex-col z-50 no-print">
         <div class="p-8">
             <div class="flex items-center gap-2 mb-1">
                 <div class="w-6 h-6 bg-emerald-400 rounded-md rotate-45"></div>
-                <h2 class="text-lg font-bold tracking-tight">SABILIL MUTTAQIN</h2>
+                <h2 class="text-lg font-bold tracking-tight uppercase">Sabilil Muttaqin</h2>
+            </div>
+            <div id="user-badge" class="mt-4 px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold inline-block border border-white/20 uppercase tracking-tighter">
+                Mode: Tamu
             </div>
         </div>
         <nav class="flex-1 px-4 space-y-2">
@@ -83,18 +91,27 @@
             <button onclick="switchTab('transaksi')" id="btn-transaksi" class="nav-btn">
                 <i data-lucide="wallet" class="w-5 h-5"></i> Buku Kas
             </button>
-            <button onclick="switchTab('laporan')" id="btn-laporan" class="nav-btn">
-                <i data-lucide="file-text" class="w-5 h-5"></i> Laporan
-            </button>
-            <button onclick="switchTab('pengaturan')" id="btn-pengaturan" class="nav-btn">
-                <i data-lucide="settings" class="w-5 h-5"></i> Pengaturan
-            </button>
+            <!-- Laporan & Pengaturan Hanya Admin -->
+            <div class="admin-only space-y-2">
+                <button onclick="switchTab('laporan')" id="btn-laporan" class="nav-btn">
+                    <i data-lucide="file-text" class="w-5 h-5"></i> Laporan
+                </button>
+                <button onclick="switchTab('pengaturan')" id="btn-pengaturan" class="nav-btn">
+                    <i data-lucide="settings" class="w-5 h-5"></i> Pengaturan
+                </button>
+            </div>
         </nav>
+        <div class="p-4 border-t border-white/10">
+            <button id="auth-btn" onclick="handleAuthAction()" class="nav-btn hover:bg-rose-500/20">
+                <i data-lucide="log-in" id="auth-icon" class="w-5 h-5 text-emerald-300"></i> 
+                <span id="auth-text">Login Admin</span>
+            </button>
+        </div>
     </aside>
 
     <main class="lg:ml-64 p-4 md:p-10 pb-24">
         
-        <!-- DASHBOARD -->
+        <!-- DASHBOARD (Akses Umum) -->
         <section id="tab-dashboard" class="tab-content no-print space-y-8">
             <header>
                 <h1 class="text-3xl font-bold text-slate-800">Assalamu'alaikum</h1>
@@ -142,7 +159,7 @@
             </div>
         </section>
 
-        <!-- BUKU KAS -->
+        <!-- BUKU KAS (Lihat Saja untuk Tamu, Aksi untuk Admin) -->
         <section id="tab-transaksi" class="tab-content hidden no-print space-y-8">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h1 class="text-3xl font-bold text-slate-800">Buku Kas Utama</h1>
@@ -153,7 +170,8 @@
                         <input type="text" id="search-tx" oninput="renderTable()" placeholder="Cari uraian..." 
                             class="bg-white border border-slate-100 py-3 pl-11 pr-4 rounded-2xl w-full md:w-64 text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm">
                     </div>
-                    <button onclick="openModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-emerald-100 flex items-center gap-2">
+                    <!-- Tombol Tambah Hanya Admin -->
+                    <button onclick="openModal()" class="admin-only bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-emerald-100 flex items-center gap-2">
                         <i data-lucide="plus" class="w-5 h-5"></i>
                         <span>Tambah</span>
                     </button>
@@ -170,7 +188,7 @@
                                 <th class="p-6 border-b border-slate-50">Uraian</th>
                                 <th class="p-6 border-b border-slate-50 text-right">Nominal</th>
                                 <th class="p-6 border-b border-slate-50 text-right">Saldo</th>
-                                <th class="p-6 border-b border-slate-50 text-center">Aksi</th>
+                                <th class="p-6 border-b border-slate-50 text-center admin-only">Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="main-table-body" class="text-sm"></tbody>
@@ -179,15 +197,23 @@
             </div>
         </section>
 
-        <!-- LAPORAN -->
+        <!-- LAPORAN (Hanya Admin) -->
         <section id="tab-laporan" class="tab-content hidden space-y-6">
             <div class="no-print flex justify-between items-center">
                 <h1 class="text-3xl font-bold text-slate-800">Laporan Keuangan</h1>
             </div>
-
+            <!-- Laporan Content di sini sama seperti sebelumnya -->
             <div class="glass-card p-6 no-print">
-                <div class="flex flex-wrap gap-4 items-end">
-                    <div class="flex-1 min-w-[150px]">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block tracking-widest">Jenis Laporan</label>
+                        <select id="report-type" onchange="toggleReportFilters()" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-100 outline-emerald-500">
+                            <option value="bulanan">Laporan Bulanan</option>
+                            <option value="tahunan">Laporan Tahunan</option>
+                            <option value="total">Laporan Total (Seluruhnya)</option>
+                        </select>
+                    </div>
+                    <div id="filter-bulan-container">
                         <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block tracking-widest">Pilih Bulan</label>
                         <select id="filter-bulan" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-100 outline-emerald-500">
                             <option value="0">Januari</option><option value="1">Februari</option><option value="2">Maret</option>
@@ -196,25 +222,26 @@
                             <option value="9">Oktober</option><option value="10">November</option><option value="11">Desember</option>
                         </select>
                     </div>
-                    <div class="flex-1 min-w-[120px]">
+                    <div id="filter-tahun-container">
                         <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block tracking-widest">Pilih Tahun</label>
                         <select id="filter-tahun" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-100 outline-emerald-500"></select>
                     </div>
-                    <button onclick="generateReport()" class="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all">Generate</button>
-                    <button onclick="window.print()" class="bg-slate-800 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-900 transition-all">
-                        Cetak PDF
-                    </button>
+                    <div class="flex gap-2">
+                        <button onclick="generateReport()" class="flex-1 bg-emerald-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all">Generate</button>
+                        <button onclick="window.print()" class="bg-slate-800 text-white px-4 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-slate-900 transition-all">
+                            <i data-lucide="printer" class="w-5 h-5"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div id="print-area" class="print-area glass-card p-12 bg-white">
-                <!-- Header Laporan -->
+            <div id="print-area" class="print-area glass-card p-12 bg-white min-h-[11in]">
                 <div class="text-center mb-8">
                     <h2 id="print-nama-masjid" class="text-2xl font-bold uppercase tracking-tight">NAMA MASJID</h2>
                     <p id="print-alamat-masjid" class="text-xs text-slate-600 mt-1">Alamat Lengkap Masjid</p>
                     <div class="mt-4" style="border-bottom: 2pt solid black;"></div>
                     <div class="mt-0.5" style="border-bottom: 0.5pt solid black;"></div>
-                    <h3 class="text-lg font-bold mt-8 underline uppercase">Laporan Keuangan Kas</h3>
+                    <h3 id="report-title-label" class="text-lg font-bold mt-8 underline uppercase">Laporan Keuangan Kas</h3>
                     <p id="print-periode" class="text-[10px] font-bold mt-1 tracking-widest uppercase">Periode: -</p>
                 </div>
 
@@ -232,7 +259,6 @@
                     <tbody id="print-table-body"></tbody>
                 </table>
 
-                <!-- Summary Box -->
                 <div class="mt-6 flex justify-start">
                     <div class="w-64 border border-slate-900 p-4">
                         <table class="w-full text-[10px] font-bold">
@@ -243,28 +269,24 @@
                     </div>
                 </div>
 
-                <!-- SIGNATURES (Perbaikan: Grid Sejajar Presisi) -->
                 <div class="sig-container mt-12 grid grid-cols-2 gap-x-8">
-                    <!-- Kolom Kiri -->
                     <div class="flex flex-col">
                         <div class="text-[11pt]">Mengetahui,</div>
                         <div id="print-jabatan-1" class="text-[11pt]">Ketua Ta'mir Masjid,</div>
-                        <div class="h-20"></div> <!-- Jarak Tanda Tangan -->
+                        <div class="h-24"></div>
                         <div id="print-nama-1" class="font-bold text-[11pt] uppercase underline">NAMA KETUA</div>
                     </div>
-
-                    <!-- Kolom Kanan -->
                     <div class="flex flex-col">
-                        <div id="print-kota-tgl" class="text-[11pt]">Kemranggen, 18 Februari 2026</div>
+                        <div id="print-kota-tgl" class="text-[11pt]">Kota, Tgl</div>
                         <div id="print-jabatan-2" class="text-[11pt]">Bendahara,</div>
-                        <div class="h-20"></div> <!-- Jarak Tanda Tangan -->
+                        <div class="h-24"></div>
                         <div id="print-nama-2" class="font-bold text-[11pt] uppercase underline">NAMA BENDAHARA</div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- PENGATURAN -->
+        <!-- PENGATURAN (Hanya Admin) -->
         <section id="tab-pengaturan" class="tab-content hidden no-print space-y-6">
             <h1 class="text-3xl font-bold text-slate-800">Pengaturan</h1>
             <div class="glass-card p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -292,11 +314,28 @@
         </section>
     </main>
 
-    <!-- Modal Transaksi -->
+    <!-- Modal Login -->
+    <div id="modal-login" class="fixed inset-0 z-[200] hidden items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 no-print">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <i data-lucide="lock" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-2">Login Admin</h3>
+            <p class="text-slate-400 text-sm mb-8">Masukkan password untuk akses penuh</p>
+            <div class="space-y-4">
+                <input type="password" id="login-pass" placeholder="Password Admin" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-emerald-500 text-center text-lg tracking-widest">
+                <button onclick="attemptLogin()" class="w-full py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200">Masuk Sekarang</button>
+                <button onclick="closeLogin()" class="w-full py-2 text-slate-400 font-medium hover:text-slate-600">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Transaksi (Tetap Sama) -->
     <div id="modal-tx" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 no-print">
         <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl">
-            <h3 class="text-2xl font-bold mb-6">Input Kas Baru</h3>
+            <h3 id="modal-title" class="text-2xl font-bold mb-6">Input Kas Baru</h3>
             <form id="tx-form" class="space-y-4">
+                <input type="hidden" id="tx-id">
                 <input type="date" id="tx-tgl" required class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-emerald-500">
                 <select id="tx-jenis" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-emerald-500 font-bold">
                     <option value="Pemasukan">Pemasukan (+)</option>
@@ -313,7 +352,9 @@
     </div>
 
     <script>
-        let transactions = JSON.parse(localStorage.getItem('masjid_tx_v3')) || [];
+        // State Management
+        let isAdmin = JSON.parse(localStorage.getItem('masjid_admin_session')) || false;
+        let transactions = JSON.parse(localStorage.getItem('masjid_tx_v4')) || [];
         let settings = JSON.parse(localStorage.getItem('masjid_set_v3')) || {
             nama: "Masjid Sabilil Muttaqin",
             alamat: "Jl. Raya Sejahtera No. 123, Jakarta Selatan",
@@ -325,6 +366,7 @@
         const formatIDR = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
 
         window.onload = () => {
+            updateUIState();
             lucide.createIcons();
             initFilters();
             applySettings();
@@ -333,41 +375,141 @@
             switchTab('dashboard');
         };
 
-        function initFilters() {
-            const ySel = document.getElementById('filter-tahun');
-            const now = new Date();
-            for (let i = now.getFullYear() - 2; i <= now.getFullYear() + 1; i++) {
-                const opt = document.createElement('option');
-                opt.value = i; opt.innerText = i;
-                if (i === now.getFullYear()) opt.selected = true;
-                ySel.appendChild(opt);
+        // UI State Updates
+        function updateUIState() {
+            const body = document.getElementById('app-body');
+            const authText = document.getElementById('auth-text');
+            const authIcon = document.getElementById('auth-icon');
+            const userBadge = document.getElementById('user-badge');
+
+            if (isAdmin) {
+                body.classList.add('is-admin');
+                authText.innerText = "Logout Admin";
+                authText.classList.add('text-rose-300');
+                authIcon.setAttribute('data-lucide', 'log-out');
+                authIcon.classList.replace('text-emerald-300', 'text-rose-400');
+                userBadge.innerText = "Mode: Admin";
+                userBadge.classList.replace('bg-white/10', 'bg-emerald-400');
+                userBadge.classList.replace('text-[10px]', 'text-[9px]');
+                userBadge.classList.add('text-emerald-900');
+            } else {
+                body.classList.remove('is-admin');
+                authText.innerText = "Login Admin";
+                authText.classList.remove('text-rose-300');
+                authIcon.setAttribute('data-lucide', 'log-in');
+                authIcon.classList.replace('text-rose-400', 'text-emerald-300');
+                userBadge.innerText = "Mode: Tamu";
+                userBadge.className = "mt-4 px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold inline-block border border-white/20 uppercase tracking-tighter";
             }
-            document.getElementById('filter-bulan').value = now.getMonth();
+            lucide.createIcons();
         }
 
+        // Auth Logic
+        function handleAuthAction() {
+            if (isAdmin) {
+                if (confirm('Apakah Anda ingin keluar dari mode Admin?')) {
+                    isAdmin = false;
+                    localStorage.setItem('masjid_admin_session', 'false');
+                    updateUIState();
+                    switchTab('dashboard');
+                    renderTable(); // Re-render to hide actions
+                }
+            } else {
+                document.getElementById('modal-login').classList.replace('hidden', 'flex');
+                document.getElementById('login-pass').focus();
+            }
+        }
+
+        function closeLogin() {
+            document.getElementById('modal-login').classList.replace('flex', 'hidden');
+            document.getElementById('login-pass').value = '';
+        }
+
+        function attemptLogin() {
+            const pass = document.getElementById('login-pass').value;
+            // Password default: 'admin123' (Bisa diganti sesuai kebutuhan)
+            if (pass === 'admin123') {
+                isAdmin = true;
+                localStorage.setItem('masjid_admin_session', 'true');
+                updateUIState();
+                closeLogin();
+                renderTable(); // Re-render to show actions
+                alert('Selamat Datang, Admin!');
+            } else {
+                alert('Password salah!');
+            }
+        }
+
+        // Tab Management
         function switchTab(id) {
+            // Proteksi: Jika bukan admin, jangan izinkan buka laporan atau pengaturan
+            if (!isAdmin && (id === 'laporan' || id === 'pengaturan')) {
+                alert('Akses Terbatas: Silakan login sebagai Admin untuk melihat menu ini.');
+                return;
+            }
+
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`tab-${id}`).classList.remove('hidden');
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('tab-active'));
             document.getElementById(`btn-${id}`).classList.add('tab-active');
+            
+            if(id === 'laporan') toggleReportFilters();
         }
 
-        function openModal() { document.getElementById('modal-tx').classList.replace('hidden', 'flex'); }
+        // Transaction Management
+        function openModal(editId = null) {
+            if (!isAdmin) return; // Guard
+            const modal = document.getElementById('modal-tx');
+            const form = document.getElementById('tx-form');
+            const title = document.getElementById('modal-title');
+            
+            form.reset();
+            document.getElementById('tx-id').value = "";
+
+            if (editId) {
+                const tx = transactions.find(t => t.id === editId);
+                if (tx) {
+                    title.innerText = "Edit Transaksi";
+                    document.getElementById('tx-id').value = tx.id;
+                    document.getElementById('tx-tgl').value = tx.tgl;
+                    document.getElementById('tx-jenis').value = tx.jenis;
+                    document.getElementById('tx-uraian').value = tx.uraian;
+                    document.getElementById('tx-nominal').value = tx.nominal;
+                }
+            } else {
+                title.innerText = "Input Kas Baru";
+                document.getElementById('tx-tgl').valueAsDate = new Date();
+            }
+
+            modal.classList.replace('hidden', 'flex');
+        }
+
         function closeModal() { document.getElementById('modal-tx').classList.replace('flex', 'hidden'); }
 
         document.getElementById('tx-form').onsubmit = (e) => {
             e.preventDefault();
-            transactions.push({
+            if (!isAdmin) return;
+            
+            const id = document.getElementById('tx-id').value;
+            const data = {
+                id: id || crypto.randomUUID(),
                 tgl: document.getElementById('tx-tgl').value,
                 jenis: document.getElementById('tx-jenis').value,
                 uraian: document.getElementById('tx-uraian').value,
                 nominal: parseFloat(document.getElementById('tx-nominal').value)
-            });
-            localStorage.setItem('masjid_tx_v3', JSON.stringify(transactions));
+            };
+
+            if (id) {
+                const idx = transactions.findIndex(t => t.id === id);
+                transactions[idx] = data;
+            } else {
+                transactions.push(data);
+            }
+
+            localStorage.setItem('masjid_tx_v4', JSON.stringify(transactions));
             renderTable();
             updateDashboard();
             closeModal();
-            e.target.reset();
         };
 
         function renderTable() {
@@ -379,13 +521,30 @@
             let runningSaldo = 0;
             let counter = 1;
 
-            sorted.forEach((t, actualIdx) => {
+            sorted.forEach((t) => {
                 if(t.jenis === 'Pemasukan') runningSaldo += t.nominal;
                 else runningSaldo -= t.nominal;
 
                 if (t.uraian.toLowerCase().includes(search)) {
                     const row = document.createElement('tr');
                     row.className = "group hover:bg-slate-50 transition-colors border-b border-slate-50";
+                    
+                    let actionHtml = '';
+                    if (isAdmin) {
+                        actionHtml = `
+                            <td class="p-6 text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <button onclick="openModal('${t.id}')" class="p-2 text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all">
+                                        <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                    </button>
+                                    <button onclick="deleteTx('${t.id}')" class="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                    }
+
                     row.innerHTML = `
                         <td class="p-6 text-slate-400 font-medium">${counter++}</td>
                         <td class="p-6 text-slate-500 font-medium">${new Date(t.tgl).toLocaleDateString('id-ID')}</td>
@@ -397,11 +556,7 @@
                             ${t.jenis==='Pemasukan'?'+':'-'} ${formatIDR(t.nominal)}
                         </td>
                         <td class="p-6 text-right font-black text-slate-800">${formatIDR(runningSaldo)}</td>
-                        <td class="p-6 text-center">
-                            <button onclick="deleteTx(${actualIdx})" class="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                            </button>
-                        </td>
+                        ${actionHtml}
                     `;
                     body.prepend(row);
                 }
@@ -409,15 +564,17 @@
             lucide.createIcons();
         }
 
-        function deleteTx(idx) {
+        function deleteTx(id) {
+            if(!isAdmin) return;
             if(confirm('Hapus data transaksi ini?')) {
-                transactions.splice(idx, 1);
-                localStorage.setItem('masjid_tx_v3', JSON.stringify(transactions));
+                transactions = transactions.filter(t => t.id !== id);
+                localStorage.setItem('masjid_tx_v4', JSON.stringify(transactions));
                 renderTable();
                 updateDashboard();
             }
         }
 
+        // Helpers (Dashboard, Reports, Settings) Tetap Sama Seperti Sebelumnya
         function updateDashboard() {
             const sorted = [...transactions].sort((a,b) => new Date(b.tgl) - new Date(a.tgl));
             const totalIn = transactions.reduce((acc, t) => t.jenis === 'Pemasukan' ? acc + t.nominal : acc, 0);
@@ -437,50 +594,53 @@
             `).join('');
         }
 
-        function applySettings() {
-            document.getElementById('print-nama-masjid').innerText = settings.nama;
-            document.getElementById('set-masjid').value = settings.nama;
-            document.getElementById('print-alamat-masjid').innerText = settings.alamat;
-            document.getElementById('set-alamat').value = settings.alamat;
-            
-            document.getElementById('print-jabatan-1').innerText = settings.jbt1;
-            document.getElementById('print-nama-1').innerText = settings.nm1;
-            document.getElementById('print-jabatan-2').innerText = settings.jbt2;
-            document.getElementById('print-nama-2').innerText = settings.nm2;
-            
-            document.getElementById('set-jbt1').value = settings.jbt1;
-            document.getElementById('set-nm1').value = settings.nm1;
-            document.getElementById('set-jbt2').value = settings.jbt2;
-            document.getElementById('set-nm2').value = settings.nm2;
-            document.getElementById('set-kota').value = settings.kota;
+        function initFilters() {
+            const ySel = document.getElementById('filter-tahun');
+            const now = new Date();
+            for (let i = now.getFullYear() - 5; i <= now.getFullYear() + 1; i++) {
+                const opt = document.createElement('option');
+                opt.value = i; opt.innerText = i;
+                if (i === now.getFullYear()) opt.selected = true;
+                ySel.appendChild(opt);
+            }
+            document.getElementById('filter-bulan').value = now.getMonth();
         }
 
-        function saveSettings() {
-            settings = {
-                nama: document.getElementById('set-masjid').value,
-                alamat: document.getElementById('set-alamat').value,
-                jbt1: document.getElementById('set-jbt1').value,
-                nm1: document.getElementById('set-nm1').value,
-                jbt2: document.getElementById('set-jbt2').value,
-                nm2: document.getElementById('set-nm2').value,
-                kota: document.getElementById('set-kota').value
-            };
-            localStorage.setItem('masjid_set_v3', JSON.stringify(settings));
-            applySettings();
-            alert('Pengaturan disimpan!');
+        function toggleReportFilters() {
+            const type = document.getElementById('report-type').value;
+            const filterBulan = document.getElementById('filter-bulan-container');
+            const filterTahun = document.getElementById('filter-tahun-container');
+            if (type === 'bulanan') { filterBulan.classList.remove('hidden'); filterTahun.classList.remove('hidden'); }
+            else if (type === 'tahunan') { filterBulan.classList.add('hidden'); filterTahun.classList.remove('hidden'); }
+            else { filterBulan.classList.add('hidden'); filterTahun.classList.add('hidden'); }
         }
 
         function generateReport() {
+            if(!isAdmin) return;
+            const type = document.getElementById('report-type').value;
             const bln = parseInt(document.getElementById('filter-bulan').value);
             const thn = parseInt(document.getElementById('filter-tahun').value);
             const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
             
-            let filtered = transactions.filter(t => {
-                const d = new Date(t.tgl);
-                return d.getMonth() === bln && d.getFullYear() === thn;
-            }).sort((a,b) => new Date(a.tgl) - new Date(b.tgl));
+            let filtered = [];
+            let periodeStr = "";
 
-            document.getElementById('print-periode').innerText = `Periode: ${months[bln]} ${thn}`;
+            if (type === 'bulanan') {
+                filtered = transactions.filter(t => { const d = new Date(t.tgl); return d.getMonth() === bln && d.getFullYear() === thn; });
+                periodeStr = `${months[bln]} ${thn}`;
+                document.getElementById('report-title-label').innerText = "Laporan Keuangan Bulanan";
+            } else if (type === 'tahunan') {
+                filtered = transactions.filter(t => { const d = new Date(t.tgl); return d.getFullYear() === thn; });
+                periodeStr = `Tahun ${thn}`;
+                document.getElementById('report-title-label').innerText = "Laporan Keuangan Tahunan";
+            } else {
+                filtered = [...transactions];
+                periodeStr = "Seluruh Periode";
+                document.getElementById('report-title-label').innerText = "Laporan Keuangan Total";
+            }
+
+            filtered.sort((a,b) => new Date(a.tgl) - new Date(b.tgl));
+            document.getElementById('print-periode').innerText = `Periode: ${periodeStr}`;
             
             let html = "", saldo = 0, tIn = 0, tOut = 0;
             filtered.forEach((t, i) => {
@@ -496,13 +656,43 @@
                 </tr>`;
             });
 
-            document.getElementById('print-table-body').innerHTML = html || '<tr><td colspan="6" class="p-8 text-center italic text-slate-400">Tidak ada data transaksi pada periode ini.</td></tr>';
+            document.getElementById('print-table-body').innerHTML = html || '<tr><td colspan="6" class="p-8 text-center italic text-slate-400">Tidak ada data transaksi.</td></tr>';
             document.getElementById('p-total-masuk').innerText = formatIDR(tIn);
             document.getElementById('p-total-keluar').innerText = formatIDR(tOut);
             document.getElementById('p-saldo-akhir').innerText = formatIDR(saldo);
-            
-            const now = new Date();
-            document.getElementById('print-kota-tgl').innerText = `${settings.kota}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+            document.getElementById('print-kota-tgl').innerText = `${settings.kota}, ${new Date().getDate()} ${months[new Date().getMonth()]} ${new Date().getFullYear()}`;
+        }
+
+        function applySettings() {
+            document.getElementById('print-nama-masjid').innerText = settings.nama;
+            document.getElementById('set-masjid').value = settings.nama;
+            document.getElementById('print-alamat-masjid').innerText = settings.alamat;
+            document.getElementById('set-alamat').value = settings.alamat;
+            document.getElementById('print-jabatan-1').innerText = settings.jbt1;
+            document.getElementById('print-nama-1').innerText = settings.nm1;
+            document.getElementById('print-jabatan-2').innerText = settings.jbt2;
+            document.getElementById('print-nama-2').innerText = settings.nm2;
+            document.getElementById('set-jbt1').value = settings.jbt1;
+            document.getElementById('set-nm1').value = settings.nm1;
+            document.getElementById('set-jbt2').value = settings.jbt2;
+            document.getElementById('set-nm2').value = settings.nm2;
+            document.getElementById('set-kota').value = settings.kota;
+        }
+
+        function saveSettings() {
+            if(!isAdmin) return;
+            settings = {
+                nama: document.getElementById('set-masjid').value,
+                alamat: document.getElementById('set-alamat').value,
+                jbt1: document.getElementById('set-jbt1').value,
+                nm1: document.getElementById('set-nm1').value,
+                jbt2: document.getElementById('set-jbt2').value,
+                nm2: document.getElementById('set-nm2').value,
+                kota: document.getElementById('set-kota').value
+            };
+            localStorage.setItem('masjid_set_v3', JSON.stringify(settings));
+            applySettings();
+            alert('Pengaturan disimpan!');
         }
     </script>
 </body>
