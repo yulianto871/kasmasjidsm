@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Kas Masjid Cloud - Fixed</title>
+    <title>Aplikasi Kas Masjid Mandiri</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -63,7 +63,7 @@
             <section id="tab-dashboard" class="tab-content space-y-8">
                 <header>
                     <h2 class="text-3xl font-bold text-slate-800">Dashboard</h2>
-                    <p class="text-slate-500">Data tersinkronisasi dengan Cloud Firestore.</p>
+                    <p class="text-slate-500">Data tersinkronisasi dengan Firebase Cloud.</p>
                 </header>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -161,13 +161,31 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global environment variables
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'masjid-live-prod';
-        
-        // Initialize Firebase
+        // ==========================================================
+        // KONFIGURASI OTOMATIS & MANUAL
+        // ==========================================================
+        let firebaseConfig = {};
+        let appId = 'masjid-live-prod';
+
+        // Deteksi apakah berjalan di editor Canvas atau hosting sendiri
+        if (typeof __firebase_config !== 'undefined' && __firebase_config !== "") {
+            firebaseConfig = JSON.parse(__firebase_config);
+            appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
+        } else {
+            // SILAKAN ISI DATA INI JIKA ANDA MENGGUNAKAN HOSTING SENDIRI (GitHub/Firebase Hosting)
+            firebaseConfig = {
+                apiKey: "ISI_API_KEY_ANDA",
+                authDomain: "PROJECT_ANDA.firebaseapp.com",
+                projectId: "PROJECT_ANDA",
+                storageBucket: "PROJECT_ANDA.appspot.com",
+                messagingSenderId: "NOMOR_SENDER",
+                appId: "APP_ID_ANDA"
+            };
+        }
+        // ==========================================================
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -229,11 +247,11 @@
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
             }
             lucide.createIcons();
-            renderData(); // Re-render to show/hide action column
+            renderData();
         }
 
-        // Firebase Auth Implementation (RULE 3)
-        const initAuth = async () => {
+        // Auth Logic (RULE 3)
+        const initializeAuthentication = async () => {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
@@ -241,48 +259,43 @@
                     await signInAnonymously(auth);
                 }
             } catch (err) {
-                console.error("Auth Initialization Error:", err);
+                console.error("Login Error:", err);
             }
         };
 
-        // Listen for Auth changes
         onAuthStateChanged(auth, (user) => {
             userState = user;
             if (user) {
-                // RULE 3: Auth first, then queries
                 startListeners();
                 updateAdminUI();
             }
         });
 
-        // Initialize Auth on start
-        initAuth();
+        initializeAuthentication();
 
         function startListeners() {
             if (!userState) return;
-
-            // Cleanup existing listener if any
             if (unsubscribeTx) unsubscribeTx();
 
-            // RULE 1: Strict Paths
-            const txColRef = collection(db, 'artifacts', appId, 'public', 'data', 'transactions');
+            // PATH RULE 1: Menggunakan path dinamis agar kompatibel dengan lingkungan mana saja
+            const path = (typeof __firebase_config !== 'undefined') 
+                ? ['artifacts', appId, 'public', 'data', 'transactions']
+                : ['transactions'];
+
+            const txColRef = collection(db, ...path);
             
-            // RULE 2: No Complex Queries (using JS sort instead of orderBy)
             unsubscribeTx = onSnapshot(txColRef, (snapshot) => {
                 transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Sort by date descending in memory
                 transactions.sort((a, b) => new Date(b.tgl) - new Date(a.tgl));
                 renderData();
             }, (error) => {
-                // REQUIRED: Error callback
-                console.error("Firestore Permission/Connection Error:", error);
+                console.error("Firestore Error:", error);
             });
         }
 
         function renderData() {
             const body = document.getElementById('kas-table-body');
             const recent = document.getElementById('recent-activities');
-            
             let tMasuk = 0, tKeluar = 0;
             
             body.innerHTML = transactions.map(t => {
@@ -327,35 +340,38 @@
         window.handleSaveTx = async (e) => {
             e.preventDefault();
             if(!isAdminActive || !userState) return;
-            
             const fd = new FormData(e.target);
             const data = {
                 tgl: fd.get('tgl'),
                 jenis: fd.get('jenis'),
                 uraian: fd.get('uraian'),
                 nominal: parseFloat(fd.get('nominal')),
-                updatedAt: new Date().toISOString()
+                createdAt: new Date().toISOString()
             };
 
             try {
-                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'transactions');
-                await addDoc(colRef, data);
+                const path = (typeof __firebase_config !== 'undefined') 
+                    ? ['artifacts', appId, 'public', 'data', 'transactions']
+                    : ['transactions'];
+                await addDoc(collection(db, ...path), data);
                 closeModal('tx-modal');
             } catch (err) {
-                alert("Gagal simpan ke Cloud. Pastikan Anda sudah login.");
+                alert("Gagal simpan: " + err.message);
             }
         };
 
         window.deleteTx = async (id) => {
-            if(!isAdminActive || !userState || !confirm("Hapus data transaksi ini?")) return;
+            if(!isAdminActive || !userState || !confirm("Hapus data?")) return;
             try {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'transactions', id));
+                const path = (typeof __firebase_config !== 'undefined') 
+                    ? ['artifacts', appId, 'public', 'data', 'transactions', id]
+                    : ['transactions', id];
+                await deleteDoc(doc(db, ...path));
             } catch (err) {
-                alert("Gagal menghapus data.");
+                alert("Gagal hapus: " + err.message);
             }
         };
 
-        // Initialize icons
         lucide.createIcons();
     </script>
 </body>
