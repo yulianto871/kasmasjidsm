@@ -91,7 +91,6 @@
             <button onclick="switchTab('transaksi')" id="btn-transaksi" class="nav-btn">
                 <i data-lucide="wallet" class="w-5 h-5"></i> Buku Kas
             </button>
-            <!-- Laporan & Pengaturan Hanya Admin -->
             <div class="admin-only space-y-2">
                 <button onclick="switchTab('laporan')" id="btn-laporan" class="nav-btn">
                     <i data-lucide="file-text" class="w-5 h-5"></i> Laporan
@@ -267,7 +266,6 @@
                     </div>
                 </div>
 
-                <!-- Penandatangan Layout -->
                 <div class="sig-container mt-16 grid grid-cols-2 w-full text-center">
                     <div class="flex flex-col items-center">
                         <div class="text-[11pt]">Mengetahui,</div>
@@ -300,7 +298,7 @@
                     <input type="text" id="set-nm1" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl mt-2 outline-emerald-500">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Jabatan & Nama (Rata Kanan/Kanan)</label>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Jabatan & Nama (Kanan)</label>
                     <input type="text" id="set-jbt2" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl mt-2 outline-emerald-500">
                     <input type="text" id="set-nm2" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl mt-2 outline-emerald-500">
                 </div>
@@ -363,7 +361,6 @@
 
         const formatIDR = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
         
-        // Helper untuk format tanggal Indonesia Panjang (DD MMMM YYYY)
         const formatDateID = (dateStr) => {
             if(!dateStr) return "-";
             const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -440,7 +437,6 @@
                 updateUIState();
                 closeLogin();
                 renderTable();
-                alert('Selamat Datang, Admin!');
             } else {
                 alert('Password salah!');
             }
@@ -605,8 +601,20 @@
             const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
             
             let filtered = [];
+            let saldoAwal = 0;
             let periodeStr = "";
+            
             if (type === 'bulanan') {
+                // Hitung Saldo Bulan Sebelumnya
+                const dateTarget = new Date(thn, bln, 1);
+                transactions.forEach(t => {
+                    const dTx = new Date(t.tgl);
+                    if (dTx < dateTarget) {
+                        if (t.jenis === 'Pemasukan') saldoAwal += t.nominal;
+                        else saldoAwal -= t.nominal;
+                    }
+                });
+                
                 filtered = transactions.filter(t => { const d = new Date(t.tgl); return d.getMonth() === bln && d.getFullYear() === thn; });
                 periodeStr = `${months[bln]} ${thn}`;
                 document.getElementById('report-title-label').innerText = "Laporan Keuangan Bulanan";
@@ -619,25 +627,48 @@
                 periodeStr = "Seluruh Periode";
                 document.getElementById('report-title-label').innerText = "Laporan Keuangan Total";
             }
+            
             filtered.sort((a,b) => new Date(a.tgl) - new Date(b.tgl));
             document.getElementById('print-periode').innerText = `Periode: ${periodeStr}`;
-            let html = "", saldo = 0, tIn = 0, tOut = 0;
-            filtered.forEach((t, i) => {
-                if(t.jenis==='Pemasukan') { saldo+=t.nominal; tIn+=t.nominal; }
-                else { saldo-=t.nominal; tOut+=t.nominal; }
+            
+            let html = "", runningSaldo = saldoAwal, tIn = 0, tOut = 0;
+            let counter = 1;
+
+            // Tambahkan baris Saldo Bulan Sebelumnya khusus bulanan
+            if (type === 'bulanan') {
                 html += `<tr>
-                    <td class="border border-slate-400 p-2 text-center text-[11px]">${i+1}</td>
+                    <td class="border border-slate-400 p-2 text-center text-[11px] font-bold">1</td>
+                    <td class="border border-slate-400 p-2 text-center text-[11px] italic">-</td>
+                    <td class="border border-slate-400 p-2 text-[11px] font-bold uppercase bg-slate-50">SALDO BULAN SEBELUMNYA</td>
+                    <td class="border border-slate-400 p-2 text-right text-[11px]">${saldoAwal >= 0 ? formatIDR(saldoAwal) : '-'}</td>
+                    <td class="border border-slate-400 p-2 text-right text-[11px]">${saldoAwal < 0 ? formatIDR(Math.abs(saldoAwal)) : '-'}</td>
+                    <td class="border border-slate-400 p-2 text-right text-[11px] font-bold">${formatIDR(saldoAwal)}</td>
+                </tr>`;
+                counter = 2;
+                if(saldoAwal > 0) tIn = saldoAwal; else tOut = Math.abs(saldoAwal);
+            }
+
+            filtered.forEach((t) => {
+                if(t.jenis==='Pemasukan') { runningSaldo+=t.nominal; tIn+=t.nominal; }
+                else { runningSaldo-=t.nominal; tOut+=t.nominal; }
+                html += `<tr>
+                    <td class="border border-slate-400 p-2 text-center text-[11px]">${counter++}</td>
                     <td class="border border-slate-400 p-2 text-center text-[11px]">${formatDateID(t.tgl)}</td>
                     <td class="border border-slate-400 p-2 text-[11px] font-bold uppercase">${t.uraian}</td>
                     <td class="border border-slate-400 p-2 text-right text-[11px]">${t.jenis==='Pemasukan'?formatIDR(t.nominal):'-'}</td>
                     <td class="border border-slate-400 p-2 text-right text-[11px]">${t.jenis==='Pengeluaran'?formatIDR(t.nominal):'-'}</td>
-                    <td class="border border-slate-400 p-2 text-right text-[11px] font-bold">${formatIDR(saldo)}</td>
+                    <td class="border border-slate-400 p-2 text-right text-[11px] font-bold">${formatIDR(runningSaldo)}</td>
                 </tr>`;
             });
-            document.getElementById('print-table-body').innerHTML = html || '<tr><td colspan="6" class="p-8 text-center italic text-slate-400">Tidak ada data transaksi.</td></tr>';
+
+            if (!html && type !== 'bulanan') {
+                html = '<tr><td colspan="6" class="p-8 text-center italic text-slate-400">Tidak ada data transaksi.</td></tr>';
+            }
+
+            document.getElementById('print-table-body').innerHTML = html;
             document.getElementById('p-total-masuk').innerText = formatIDR(tIn);
             document.getElementById('p-total-keluar').innerText = formatIDR(tOut);
-            document.getElementById('p-saldo-akhir').innerText = formatIDR(saldo);
+            document.getElementById('p-saldo-akhir').innerText = formatIDR(runningSaldo);
             document.getElementById('print-kota-tgl').innerText = `${settings.kota}, ${new Date().getDate()} ${months[new Date().getMonth()]} ${new Date().getFullYear()}`;
         }
 
