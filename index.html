@@ -3,367 +3,519 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kas Masjid Pro - Cloud System</title>
+    <title>Sistem Kas Masjid - Cloud Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
-        .scale-in { animation: scaleIn 0.2s ease-out; }
-        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-container {
+                width: 100% !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            @page { size: A4; margin: 1cm; }
+        }
+
+        .spinner {
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #059669;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-slate-900 min-h-screen">
+<body class="text-slate-900">
 
-    <!-- Navbar -->
-    <nav class="bg-emerald-700 text-white p-4 sticky top-0 z-40 shadow-md">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <i data-lucide="mosque" class="w-8 h-8"></i>
-                <h1 class="text-xl font-bold tracking-tight">KAS MASJID <span class="text-emerald-300 underline underline-offset-4">DIGITAL</span></h1>
-            </div>
-            <div id="auth-status" class="flex items-center gap-4">
-                <span id="user-display" class="hidden text-sm font-medium bg-emerald-800 px-3 py-1 rounded-full border border-emerald-600"></span>
-                <button onclick="toggleAuth()" id="auth-btn" class="bg-white text-emerald-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-50 transition-colors flex items-center gap-2">
-                    <i data-lucide="lock" class="w-4 h-4" id="auth-icon"></i> <span id="auth-text">Login Admin</span>
-                </button>
-            </div>
-        </div>
-    </nav>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center">
+        <div class="spinner mb-4"></div>
+        <p class="text-sm font-bold text-slate-500 uppercase tracking-widest">Menghubungkan ke Cloud...</p>
+    </div>
 
-    <!-- Main Content -->
-    <main class="max-w-6xl mx-auto p-4 md:p-8 space-y-8">
-        
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="glass-card p-6 rounded-3xl border border-gray-100 shadow-sm">
-                <div class="flex items-center gap-4 mb-4">
-                    <div class="p-3 bg-emerald-100 text-emerald-600 rounded-2xl"><i data-lucide="trending-up"></i></div>
-                    <span class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Total Pemasukan</span>
-                </div>
-                <h3 id="stat-masuk" class="text-3xl font-extrabold text-emerald-700">Rp 0</h3>
-            </div>
-            <div class="glass-card p-6 rounded-3xl border border-gray-100 shadow-sm">
-                <div class="flex items-center gap-4 mb-4">
-                    <div class="p-3 bg-rose-100 text-rose-600 rounded-2xl"><i data-lucide="trending-down"></i></div>
-                    <span class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Total Pengeluaran</span>
-                </div>
-                <h3 id="stat-keluar" class="text-3xl font-extrabold text-rose-700">Rp 0</h3>
-            </div>
-            <div class="bg-emerald-800 p-6 rounded-3xl shadow-xl text-white">
-                <div class="flex items-center gap-4 mb-4">
-                    <div class="p-3 bg-white/10 text-emerald-200 rounded-2xl"><i data-lucide="wallet"></i></div>
-                    <span class="text-sm font-semibold text-emerald-200 uppercase tracking-wider">Saldo Akhir</span>
-                </div>
-                <h3 id="stat-saldo" class="text-3xl font-black">Rp 0</h3>
-            </div>
-        </div>
-
-        <!-- Table Section -->
-        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
-                <h4 class="font-bold text-gray-700 flex items-center gap-2">
-                    <i data-lucide="list" class="w-5 h-5"></i> Riwayat Transaksi
-                </h4>
-                <button onclick="openForm()" id="add-btn" class="hidden bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all active:scale-95">
-                    <i data-lucide="plus-circle" class="w-5 h-5"></i> Tambah Kas
-                </button>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left">
-                    <thead>
-                        <tr class="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">
-                            <th class="p-6">Tanggal</th>
-                            <th class="p-6">Uraian / Keterangan</th>
-                            <th class="p-6 text-right">Nominal</th>
-                            <th id="th-aksi" class="hidden p-6 text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body" class="divide-y divide-gray-50 text-center py-10">
-                        <tr><td colspan="4" class="p-10 text-gray-400">Memuat data...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </main>
-
-    <!-- Modal Login -->
-    <div id="modal-login" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 md:p-10 shadow-2xl scale-in">
+    <!-- Auth UI -->
+    <div id="authSection" class="hidden min-h-screen flex items-center justify-center p-4 bg-emerald-50">
+        <div class="bg-white w-full max-w-md p-8 rounded-2xl shadow-xl border border-emerald-100">
             <div class="text-center mb-8">
-                <div class="inline-flex p-4 bg-emerald-50 text-emerald-600 rounded-3xl mb-4">
-                    <i data-lucide="shield-check" class="w-10 h-10"></i>
+                <div class="inline-flex p-4 bg-emerald-600 text-white rounded-2xl shadow-lg mb-4">
+                    <i class="fas fa-mosque fa-2x"></i>
                 </div>
-                <h3 class="text-2xl font-black text-slate-800">Admin Login</h3>
-                <p class="text-slate-400 text-sm mt-1">Gunakan kredensial Firebase Console</p>
+                <h1 class="text-2xl font-black text-slate-800 uppercase tracking-tighter">Login Kas Masjid</h1>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Akses Database Cloud</p>
             </div>
-            <form id="form-login" class="space-y-4">
-                <div class="space-y-1">
-                    <label class="text-[10px] font-bold uppercase text-slate-400 ml-2 tracking-tighter">Alamat Email</label>
-                    <input type="email" id="email" required class="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 focus:ring-4 ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all">
+            <div id="authError" class="hidden mb-4 p-3 bg-rose-50 text-rose-600 text-xs font-bold rounded-lg border border-rose-100"></div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Email</label>
+                    <input type="email" id="email" required class="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-emerald-500" placeholder="admin@masjid.com">
                 </div>
-                <div class="space-y-1">
-                    <label class="text-[10px] font-bold uppercase text-slate-400 ml-2 tracking-tighter">Password</label>
-                    <input type="password" id="password" required class="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 focus:ring-4 ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Password</label>
+                    <input type="password" id="password" required class="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-emerald-500" placeholder="••••••••">
                 </div>
-                <button type="submit" id="btn-submit-login" class="w-full bg-emerald-600 text-white p-5 rounded-2xl font-bold shadow-xl shadow-emerald-200 hover:bg-emerald-700 transition-all flex justify-center items-center gap-2">
-                    Masuk ke Sistem
+                <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition-all shadow-md active:scale-95">
+                    Masuk Sekarang
                 </button>
-                <button type="button" onclick="closeModal('modal-login')" class="w-full text-slate-400 text-sm font-semibold mt-4">Tutup</button>
             </form>
+            <p class="text-center mt-6 text-[10px] text-slate-400 font-medium uppercase tracking-widest">Aplikasi Keuangan Sabilil Muttaqin</p>
         </div>
     </div>
 
-    <!-- Modal Form Transaksi -->
-    <div id="modal-form" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-lg rounded-[2.5rem] p-8 md:p-10 shadow-2xl scale-in">
-            <h3 class="text-2xl font-black mb-6 text-slate-800">Tambah Transaksi</h3>
-            <form id="form-transaksi" class="space-y-5">
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold uppercase text-slate-400 ml-2">Tanggal</label>
-                        <input name="tgl" type="date" required class="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 outline-none">
+    <!-- App UI -->
+    <div id="appSection" class="hidden">
+        <!-- Header -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-40 no-print">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex flex-col md:flex-row md:items-center justify-between py-2 md:py-0">
+                    <div class="flex items-center justify-between py-4">
+                        <div class="flex items-center gap-3 text-emerald-600">
+                            <div class="bg-emerald-600 text-white p-2 rounded-xl shadow-md">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                            <div>
+                                <h1 class="font-black text-lg tracking-tighter leading-none uppercase">KAS CLOUD</h1>
+                                <p id="headerMosqueName" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mt-1">SABILIL MUTTAQIN</p>
+                            </div>
+                        </div>
+                        <button id="logoutBtn" class="md:hidden text-slate-400 hover:text-rose-500"><i class="fas fa-sign-out-alt"></i></button>
                     </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold uppercase text-slate-400 ml-2">Jenis</label>
-                        <select name="jenis" class="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 outline-none font-bold">
-                            <option value="Pemasukan">Pemasukan (+)</option>
-                            <option value="Pengeluaran">Pengeluaran (-)</option>
+
+                    <nav class="flex items-center overflow-x-auto no-scrollbar -mx-4 md:mx-0">
+                        <button onclick="switchView('dashboard')" class="nav-btn active flex items-center gap-2 px-6 py-4 border-b-2 border-transparent transition-all text-sm uppercase tracking-wider text-slate-500 hover:text-slate-700">
+                            <i class="fas fa-th-large"></i> Dashboard
+                        </button>
+                        <button onclick="switchView('transactions')" class="nav-btn flex items-center gap-2 px-6 py-4 border-b-2 border-transparent transition-all text-sm uppercase tracking-wider text-slate-500 hover:text-slate-700">
+                            <i class="fas fa-book"></i> Buku Kas
+                        </button>
+                        <button onclick="switchView('reports')" class="nav-btn flex items-center gap-2 px-6 py-4 border-b-2 border-transparent transition-all text-sm uppercase tracking-wider text-slate-500 hover:text-slate-700">
+                            <i class="fas fa-print"></i> Laporan
+                        </button>
+                        <button onclick="logout()" class="hidden md:flex items-center gap-2 px-6 py-4 text-slate-400 hover:text-rose-500 transition-all text-sm uppercase tracking-wider font-bold">
+                            <i class="fas fa-sign-out-alt"></i> Keluar
+                        </button>
+                    </nav>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
+            <!-- View Containers -->
+            <div id="view-dashboard" class="view-content space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                        <div class="p-4 bg-emerald-100 text-emerald-600 rounded-full"><i class="fas fa-arrow-up text-xl"></i></div>
+                        <div>
+                            <p class="text-xs text-slate-500 uppercase tracking-widest font-bold">Total Pemasukan</p>
+                            <p id="statIncome" class="text-2xl font-bold text-slate-800">Rp 0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                        <div class="p-4 bg-rose-100 text-rose-600 rounded-full"><i class="fas fa-arrow-down text-xl"></i></div>
+                        <div>
+                            <p class="text-xs text-slate-500 uppercase tracking-widest font-bold">Total Pengeluaran</p>
+                            <p id="statExpense" class="text-2xl font-bold text-slate-800">Rp 0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 border-l-4 border-l-emerald-500">
+                        <div class="p-4 bg-blue-100 text-blue-600 rounded-full"><i class="fas fa-university text-xl"></i></div>
+                        <div>
+                            <p class="text-xs text-slate-500 uppercase tracking-widest font-bold">Saldo Kas</p>
+                            <p id="statBalance" class="text-2xl font-bold text-slate-800">Rp 0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-transactions" class="view-content hidden space-y-4">
+                <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <h2 class="text-lg font-bold text-slate-800 uppercase tracking-tight ml-2">Riwayat Kas</h2>
+                    <button onclick="openModal()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-md active:scale-95">
+                        <i class="fas fa-plus"></i> Tambah Transaksi
+                    </button>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-widest">
+                                <tr>
+                                    <th class="px-4 py-3 font-bold">Tanggal</th>
+                                    <th class="px-4 py-3 font-bold">Keterangan</th>
+                                    <th class="px-4 py-3 font-bold text-right">Nominal</th>
+                                    <th class="px-4 py-3 font-bold text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionList" class="divide-y divide-slate-100">
+                                <!-- Data injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-reports" class="view-content hidden space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 no-print">
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div class="flex-1 min-w-[150px]">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Filter Bulan</label>
+                            <select id="reportMonth" class="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500">
+                                <!-- Generated JS -->
+                            </select>
+                        </div>
+                        <button onclick="window.print()" class="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-900 flex items-center gap-2">
+                            <i class="fas fa-print"></i> Cetak Laporan
+                        </button>
+                    </div>
+                </div>
+
+                <div id="printableArea" class="bg-white p-8 md:p-12 shadow-lg rounded-xl print-container">
+                    <div class="text-center mb-10 border-b-4 border-slate-900 pb-6">
+                        <h1 class="text-xl font-black text-slate-900 uppercase tracking-tight">LAPORAN KEUANGAN KAS MASJID</h1>
+                        <h2 id="reportMosqueName" class="text-3xl font-black text-slate-900 uppercase tracking-widest mt-1">SABILIL MUTTAQIN</h2>
+                        <p id="reportPeriodText" class="text-slate-600 font-bold uppercase tracking-widest text-xs mt-3">Januari 2024</p>
+                    </div>
+                    
+                    <table class="w-full border-collapse border border-slate-900 text-xs">
+                        <thead>
+                            <tr class="bg-slate-100 uppercase">
+                                <th class="border border-slate-900 px-3 py-2 w-8">No</th>
+                                <th class="border border-slate-900 px-3 py-2">Tanggal</th>
+                                <th class="border border-slate-900 px-3 py-2 text-left">Uraian</th>
+                                <th class="border border-slate-900 px-3 py-2 text-right">Debet</th>
+                                <th class="border border-slate-900 px-3 py-2 text-right">Kredit</th>
+                                <th class="border border-slate-900 px-3 py-2 text-right">Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTableBody">
+                            <!-- Injected JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Form -->
+    <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 id="modalTitle" class="text-lg font-bold text-slate-800 uppercase tracking-tighter">Tambah Transaksi</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="transactionForm" class="p-6 space-y-4">
+                <input type="hidden" id="editId">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-widest">Tanggal</label>
+                        <input type="date" id="tDate" required class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-widest">Jenis</label>
+                        <select id="tType" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="Pemasukan">Pemasukan</option>
+                            <option value="Pengeluaran">Pengeluaran</option>
                         </select>
                     </div>
                 </div>
-                <div class="space-y-1">
-                    <label class="text-[10px] font-bold uppercase text-slate-400 ml-2">Uraian Transaksi</label>
-                    <input name="uraian" placeholder="Contoh: Infaq Jumat" required class="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 outline-none">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-widest">Uraian / Keterangan</label>
+                    <input type="text" id="tDesc" required class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Infaq Jumat, dll">
                 </div>
-                <div class="space-y-1">
-                    <label class="text-[10px] font-bold uppercase text-slate-400 ml-2">Nominal (Rp)</label>
-                    <input name="nominal" type="number" placeholder="0" required class="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 outline-none font-black text-2xl text-emerald-600">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-widest">Nominal (Rp)</label>
+                    <input type="number" id="tAmount" required class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-lg text-emerald-600" placeholder="0">
                 </div>
-                <div class="flex gap-4 pt-4">
-                    <button type="button" onclick="closeModal('modal-form')" class="flex-1 font-bold text-slate-400 py-4 hover:text-slate-600 transition-colors">Batalkan</button>
-                    <button type="submit" class="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-95">Simpan Data</button>
+                <div class="flex gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeModal()" class="flex-1 py-2 bg-slate-100 text-slate-500 font-bold rounded-lg hover:bg-slate-200 uppercase tracking-widest text-[10px]">Batal</button>
+                    <button type="submit" class="flex-[2] py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 shadow-md uppercase tracking-widest text-[10px]">Simpan Transaksi</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signInAnonymously, onAuthStateChanged, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables provided by environment
+        // Configuration
         const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'masjid-live-system';
-        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'masjid-finance-default';
 
-        let isAdmin = false;
-        let unsubscribeData = null; // Store listener reference for cleanup
+        // Global State
+        let currentUser = null;
+        let allTransactions = [];
+        const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
-        // --- AUTHENTICATION FLOW (MANDATORY RULE 3) ---
+        // UI Selectors
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const authSection = document.getElementById('authSection');
+        const appSection = document.getElementById('appSection');
+        const transactionList = document.getElementById('transactionList');
+        const loginForm = document.getElementById('loginForm');
+        const authError = document.getElementById('authError');
 
+        // Init Auth (Follow RULE 3)
         const initAuth = async () => {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
-                    await signInAnonymously(auth);
+                    // Fallback to anonymous for preview if no credentials provided
+                    // Normally user would login via form
                 }
             } catch (err) {
-                console.error("Auth initialization failed:", err);
+                console.error("Auth init error:", err);
             }
         };
+        initAuth();
 
-        // Listen for Auth changes and trigger data loading
         onAuthStateChanged(auth, (user) => {
+            loadingOverlay.classList.add('hidden');
             if (user) {
-                applyAuthUI(user);
-                // Trigger data loading ONLY after auth is confirmed
-                loadData(user);
+                currentUser = user;
+                authSection.classList.add('hidden');
+                appSection.classList.remove('hidden');
+                setupDataSync(user.uid);
             } else {
-                initAuth();
+                appSection.classList.add('hidden');
+                authSection.classList.remove('hidden');
             }
         });
 
-        const applyAuthUI = (user) => {
-            isAdmin = user && !user.isAnonymous;
-            const userDisplay = document.getElementById('user-display');
-            const authBtn = document.getElementById('auth-btn');
-            const authText = document.getElementById('auth-text');
-            const addBtn = document.getElementById('add-btn');
-            const thAksi = document.getElementById('th-aksi');
+        // Data Sync (Follow RULE 1 & 2)
+        const setupDataSync = (userId) => {
+            const dataPath = `/artifacts/${appId}/public/data/transactions`; // Using public path for collaborative data
+            const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'transactions'));
 
-            if (isAdmin) {
-                userDisplay.innerText = user.email;
-                userDisplay.classList.remove('hidden');
-                authText.innerText = "Logout Admin";
-                authBtn.classList.replace('bg-white', 'bg-rose-500');
-                authBtn.classList.replace('text-emerald-700', 'text-white');
-                addBtn.classList.remove('hidden');
-                thAksi.classList.remove('hidden');
-                document.getElementById('auth-icon').setAttribute('data-lucide', 'log-out');
-            } else {
-                userDisplay.classList.add('hidden');
-                authText.innerText = "Login Admin";
-                authBtn.classList.replace('bg-rose-500', 'bg-white');
-                authBtn.classList.replace('text-white', 'text-emerald-700');
-                addBtn.classList.add('hidden');
-                thAksi.classList.add('hidden');
-                document.getElementById('auth-icon').setAttribute('data-lucide', 'lock');
-            }
-            lucide.createIcons();
+            onSnapshot(q, (snapshot) => {
+                allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                    .sort((a, b) => new Date(a.date) - new Date(b.date));
+                updateUI();
+            }, (error) => {
+                console.error("Firestore Listen Error:", error);
+            });
         };
 
-        document.getElementById('form-login').onsubmit = async (e) => {
+        // UI Handlers
+        window.switchView = (viewName) => {
+            document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                b.classList.remove('border-emerald-600', 'text-emerald-600', 'font-bold', 'bg-emerald-50/30');
+                if (b.innerText.toLowerCase().includes(viewName)) {
+                    b.classList.add('border-emerald-600', 'text-emerald-600', 'font-bold', 'bg-emerald-50/30');
+                }
+            });
+
+            if (viewName === 'reports') renderReport();
+        };
+
+        const updateUI = () => {
+            // Stats
+            const income = allTransactions.reduce((sum, t) => t.type === 'Pemasukan' ? sum + Number(t.amount) : sum, 0);
+            const expense = allTransactions.reduce((sum, t) => t.type === 'Pengeluaran' ? sum + Number(t.amount) : sum, 0);
+            const balance = income - expense;
+
+            document.getElementById('statIncome').innerText = formatCurrency(income);
+            document.getElementById('statExpense').innerText = formatCurrency(expense);
+            document.getElementById('statBalance').innerText = formatCurrency(balance);
+
+            // Transaction List
+            transactionList.innerHTML = '';
+            [...allTransactions].reverse().forEach(t => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="px-4 py-4 text-slate-500 text-[11px] font-bold">${formatDateShort(t.date)}</td>
+                    <td class="px-4 py-4 font-bold text-slate-800 text-xs uppercase tracking-tight">${t.description}</td>
+                    <td class="px-4 py-4 text-right font-black ${t.type === 'Pemasukan' ? 'text-emerald-600' : 'text-rose-600'}">
+                        ${t.type === 'Pemasukan' ? '+' : '-'} ${Number(t.amount).toLocaleString('id-ID')}
+                    </td>
+                    <td class="px-4 py-4 text-center space-x-2">
+                        <button onclick="editTransaction('${t.id}')" class="text-blue-500 p-1"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteTransaction('${t.id}')" class="text-rose-400 p-1"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                transactionList.appendChild(tr);
+            });
+        };
+
+        const renderReport = () => {
+            const select = document.getElementById('reportMonth');
+            const [selectedYear, selectedMonth] = select.value.split('-').map(Number);
+            
+            // 1. Calculate Previous Balance
+            let prevBalance = 0;
+            const currentRows = [];
+            
+            allTransactions.forEach(t => {
+                const d = new Date(t.date);
+                const tYear = d.getFullYear();
+                const tMonth = d.getMonth() + 1;
+
+                if (tYear < selectedYear || (tYear === selectedYear && tMonth < selectedMonth)) {
+                    if (t.type === 'Pemasukan') prevBalance += Number(t.amount);
+                    else prevBalance -= Number(t.amount);
+                } else if (tYear === selectedYear && tMonth === selectedMonth) {
+                    currentRows.push(t);
+                }
+            });
+
+            // 2. Render Table
+            const tbody = document.getElementById('reportTableBody');
+            tbody.innerHTML = '';
+
+            // Row 1: Saldo Awal
+            const trAwal = document.createElement('tr');
+            trAwal.className = "bg-slate-50 italic";
+            trAwal.innerHTML = `
+                <td class="border border-slate-900 px-2 py-2 text-center">1</td>
+                <td class="border border-slate-900 px-2 py-2">-</td>
+                <td class="border border-slate-900 px-2 py-2 font-black uppercase">SALDO BULAN SEBELUMNYA</td>
+                <td class="border border-slate-900 px-2 py-2 text-right">-</td>
+                <td class="border border-slate-900 px-2 py-2 text-right">-</td>
+                <td class="border border-slate-900 px-2 py-2 text-right font-black">${prevBalance.toLocaleString('id-ID')}</td>
+            `;
+            tbody.appendChild(trAwal);
+
+            let running = prevBalance;
+            currentRows.forEach((t, i) => {
+                if (t.type === 'Pemasukan') running += Number(t.amount);
+                else running -= Number(t.amount);
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="border border-slate-900 px-2 py-2 text-center">${i + 2}</td>
+                    <td class="border border-slate-900 px-2 py-2 text-center uppercase font-bold">${formatDateShort(t.date)}</td>
+                    <td class="border border-slate-900 px-2 py-2 font-bold uppercase">${t.description}</td>
+                    <td class="border border-slate-900 px-2 py-2 text-right">${t.type === 'Pemasukan' ? Number(t.amount).toLocaleString('id-ID') : '-'}</td>
+                    <td class="border border-slate-900 px-2 py-2 text-right">${t.type === 'Pengeluaran' ? Number(t.amount).toLocaleString('id-ID') : '-'}</td>
+                    <td class="border border-slate-900 px-2 py-2 text-right font-black bg-slate-50">${running.toLocaleString('id-ID')}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('reportPeriodText').innerText = `${months[selectedMonth-1]} ${selectedYear}`;
+        };
+
+        // Actions
+        window.openModal = (id = null) => {
+            const modal = document.getElementById('modal');
+            const form = document.getElementById('transactionForm');
+            form.reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('modalTitle').innerText = 'Tambah Transaksi';
+            document.getElementById('tDate').value = new Date().toISOString().split('T')[0];
+
+            if (id) {
+                const t = allTransactions.find(x => x.id === id);
+                document.getElementById('editId').value = id;
+                document.getElementById('tDate').value = t.date;
+                document.getElementById('tType').value = t.type;
+                document.getElementById('tDesc').value = t.description;
+                document.getElementById('tAmount').value = t.amount;
+                document.getElementById('modalTitle').innerText = 'Edit Transaksi';
+            }
+            modal.classList.remove('hidden');
+        };
+
+        window.closeModal = () => document.getElementById('modal').classList.add('hidden');
+
+        document.getElementById('transactionForm').onsubmit = async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const id = document.getElementById('editId').value;
+            const data = {
+                date: document.getElementById('tDate').value,
+                type: document.getElementById('tType').value,
+                description: document.getElementById('tDesc').value,
+                amount: Number(document.getElementById('tAmount').value),
+                updatedAt: new Date().toISOString(),
+                createdBy: currentUser.uid
+            };
+
+            try {
+                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'transactions');
+                if (id) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'transactions', id), data);
+                } else {
+                    await addDoc(colRef, data);
+                }
+                closeModal();
+            } catch (err) {
+                console.error("Save Error:", err);
+            }
+        };
+
+        window.deleteTransaction = async (id) => {
+            if (confirm('Hapus transaksi ini?')) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'transactions', id));
+            }
+        };
+
+        window.logout = () => signOut(auth);
+
+        loginForm.onsubmit = async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
-            const submitBtn = document.getElementById('btn-submit-login');
-
-            submitBtn.disabled = true;
-            submitBtn.innerText = "Memproses...";
-
+            authError.classList.add('hidden');
+            
             try {
                 await signInWithEmailAndPassword(auth, email, pass);
-                closeModal('modal-login');
-                e.target.reset();
             } catch (err) {
-                alert("Login Gagal: Pastikan email & password sesuai di Firebase Console.");
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerText = "Masuk ke Sistem";
+                authError.innerText = "Email atau Password salah. Silakan coba lagi.";
+                authError.classList.remove('hidden');
             }
         };
 
-        window.toggleAuth = () => {
-            if (isAdmin) {
-                if(confirm("Yakin ingin keluar dari akun admin?")) signOut(auth);
-            } else {
-                openModal('modal-login');
+        // Helpers
+        const formatCurrency = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+        const formatDateShort = (s) => {
+            const d = new Date(s);
+            return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
+        };
+
+        // Init Filters
+        const initFilters = () => {
+            const select = document.getElementById('reportMonth');
+            const now = new Date();
+            for(let i=0; i<12; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const val = `${d.getFullYear()}-${d.getMonth()+1}`;
+                const label = `${months[d.getMonth()]} ${d.getFullYear()}`;
+                const opt = new Option(label, val);
+                select.add(opt);
             }
+            select.onchange = renderReport;
         };
+        initFilters();
 
-        // --- DATA HANDLERS (MANDATORY RULE 1 & 2) ---
-
-        function loadData(user) {
-            // Guard: Stop if no user or listener exists (Rule 3)
-            if (!user) return;
-            if (unsubscribeData) unsubscribeData();
-
-            const colPath = collection(db, 'artifacts', appId, 'public', 'data', 'kas_records');
-
-            // Set up Real-time listener with error callback
-            unsubscribeData = onSnapshot(colPath, (snap) => {
-                const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                renderUI(data);
-            }, (err) => {
-                console.error("Firestore Permission Error:", err);
-                // If it fails, likely permission issue or index required
-                document.getElementById('table-body').innerHTML = `<tr><td colspan="4" class="p-10 text-rose-500">Gagal memuat data: ${err.message}</td></tr>`;
-            });
-        }
-
-        function renderUI(data) {
-            const table = document.getElementById('table-body');
-            const fmt = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
-            
-            let tIn = 0, tOut = 0;
-            
-            // Javascript Sorting (Rule 2 - Avoid complex queries)
-            data.sort((a, b) => new Date(b.tgl) - new Date(a.tgl));
-
-            if (data.length === 0) {
-                table.innerHTML = `<tr><td colspan="4" class="p-10 text-gray-400 italic">Belum ada riwayat transaksi</td></tr>`;
-                document.getElementById('stat-masuk').innerText = fmt(0);
-                document.getElementById('stat-keluar').innerText = fmt(0);
-                document.getElementById('stat-saldo').innerText = fmt(0);
-                return;
-            }
-
-            table.innerHTML = data.map(item => {
-                const masuk = item.jenis === 'Pemasukan';
-                const nom = Number(item.nominal) || 0;
-                if(masuk) tIn += nom; else tOut += nom;
-
-                return `
-                    <tr class="group hover:bg-emerald-50/30 transition-all border-b border-gray-50 last:border-0">
-                        <td class="p-6 text-gray-500 font-medium whitespace-nowrap">${item.tgl}</td>
-                        <td class="p-6">
-                            <div class="font-bold text-slate-800">${item.uraian}</div>
-                            <div class="text-[10px] text-gray-400 uppercase tracking-tighter">${item.jenis}</div>
-                        </td>
-                        <td class="p-6 text-right font-black ${masuk ? 'text-emerald-600' : 'text-rose-600'}">
-                            ${masuk ? '+' : '-'} ${fmt(nom)}
-                        </td>
-                        <td class="${isAdmin ? '' : 'hidden'} p-6 text-center">
-                            <button onclick="deleteItem('${item.id}')" class="text-gray-300 hover:text-rose-500 p-2 rounded-xl transition-colors">
-                                <i data-lucide="trash-2" class="w-5 h-5"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-
-            document.getElementById('stat-masuk').innerText = fmt(tIn);
-            document.getElementById('stat-keluar').innerText = fmt(tOut);
-            document.getElementById('stat-saldo').innerText = fmt(tIn - tOut);
-            lucide.createIcons();
-        }
-
-        document.getElementById('form-transaksi').onsubmit = async (e) => {
-            e.preventDefault();
-            if (!isAdmin) return alert("Akses Ditolak: Anda harus login sebagai admin.");
-
-            const fd = new FormData(e.target);
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'kas_records'), {
-                    tgl: fd.get('tgl'),
-                    jenis: fd.get('jenis'),
-                    uraian: fd.get('uraian'),
-                    nominal: Number(fd.get('nominal')),
-                    timestamp: serverTimestamp(),
-                    createdBy: auth.currentUser.email
-                });
-                closeModal('modal-form');
-                e.target.reset();
-            } catch (err) {
-                console.error("Save Error:", err);
-                alert("Gagal Simpan: " + err.message);
-            }
-        };
-
-        window.deleteItem = async (id) => {
-            if (!isAdmin) return;
-            if (confirm("Hapus catatan transaksi ini?")) {
-                try {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'kas_records', id));
-                } catch (err) { alert("Error Hapus: " + err.message); }
-            }
-        };
-
-        // --- UTILITIES ---
-        window.openForm = () => openFormModal();
-        function openFormModal() {
-            openModal('modal-form');
-            // Set today as default date
-            const today = new Date().toISOString().split('T')[0];
-            document.querySelector('#form-transaksi [name="tgl"]').value = today;
-        }
-
-        window.openModal = (id) => {
-            document.getElementById(id).classList.remove('hidden');
-        };
-        window.closeModal = (id) => {
-            document.getElementById(id).classList.add('hidden');
-        };
-
-        // Initial icon load
-        lucide.createIcons();
+        // Make functions globally available for inline onclick
+        window.editTransaction = openModal;
     </script>
 </body>
 </html>
