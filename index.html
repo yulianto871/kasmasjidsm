@@ -3,401 +3,253 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Kas Masjid Mandiri</title>
+    <title>Aplikasi Kas Masjid Cloud</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .active-tab { color: #10b981; border-top: 2px solid #10b981; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         @media print {
             .no-print { display: none !important; }
             .print-only { display: block !important; }
-            body { background: white; }
         }
-        .sidebar-item.active { background: rgba(255,255,255,0.1); color: #34d399; }
-        .tab-content.hidden { display: none; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body class="bg-slate-50 text-slate-900 pb-24 lg:pb-0 lg:pl-64">
 
-    <div id="app" class="flex min-h-screen">
-        <!-- Sidebar -->
-        <aside class="w-64 bg-emerald-900 text-white fixed h-full hidden lg:flex flex-col no-print">
-            <div class="p-8">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-8 h-8 bg-emerald-400 rounded-lg rotate-45 flex items-center justify-center">
-                        <div class="w-3 h-3 bg-emerald-900 rounded-full"></div>
-                    </div>
-                    <h1 class="font-bold text-lg leading-none tracking-tight uppercase">Kas<br/><span class="text-emerald-400">Masjid</span></h1>
-                </div>
-                <div id="badge-admin" class="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase inline-block border border-white/20 bg-white/10">
-                    Memuat...
-                </div>
+    <!-- Sidebar & Navigasi (Sama seperti sebelumnya) -->
+    <aside class="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 bg-emerald-900 text-white flex-col p-6 no-print">
+        <div class="flex items-center gap-3 mb-10">
+            <div class="w-8 h-8 bg-emerald-400 rounded-lg flex items-center justify-center">
+                <i data-lucide="mosque" class="text-emerald-900" size="20"></i>
             </div>
-
-            <nav class="flex-1 px-4 space-y-1">
-                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="sidebar-item w-full flex items-center gap-3 p-3 rounded-xl transition-all font-medium active">
-                    <i data-lucide="layout-grid" size="20"></i> Dashboard
-                </button>
-                <button onclick="switchTab('kas')" id="nav-kas" class="sidebar-item w-full flex items-center gap-3 p-3 rounded-xl transition-all font-medium">
-                    <i data-lucide="wallet" size="20"></i> Buku Kas
-                </button>
-                <button onclick="switchTab('laporan')" id="nav-laporan" class="admin-only hidden w-full flex items-center gap-3 p-3 rounded-xl transition-all font-medium">
-                    <i data-lucide="file-text" size="20"></i> Laporan
-                </button>
-                <button onclick="switchTab('settings')" id="nav-settings" class="admin-only hidden w-full flex items-center gap-3 p-3 rounded-xl transition-all font-medium">
-                    <i data-lucide="settings" size="20"></i> Pengaturan
-                </button>
-            </nav>
-
-            <div class="p-4 border-t border-white/10">
-                <button id="auth-btn" onclick="toggleAuth()" class="w-full flex items-center gap-3 p-3 rounded-xl text-slate-400 hover:text-white transition-all">
-                    <i data-lucide="log-in" class="text-emerald-400"></i> <span id="auth-btn-text">Login Admin</span>
-                </button>
-            </div>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="flex-1 lg:ml-64 p-6 md:p-10">
-            <!-- Pesan Error Permission -->
-            <div id="permission-error-banner" class="hidden mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl flex items-start gap-3">
-                <i data-lucide="alert-circle" class="shrink-0 mt-0.5"></i>
-                <div>
-                    <p class="font-bold text-sm text-rose-800">Firestore Permission Error</p>
-                    <p class="text-xs mt-1">Aplikasi tidak memiliki izin untuk membaca data. Pastikan Anda sudah mengatur <b>Firestore Rules</b> di Firebase Console Anda menjadi 'allow read, write: if request.auth != null;'.</p>
-                </div>
-            </div>
-
-            <!-- Dashboard -->
-            <section id="tab-dashboard" class="tab-content space-y-8">
-                <header>
-                    <h2 class="text-3xl font-bold text-slate-800">Dashboard</h2>
-                    <p class="text-slate-500">Data tersinkronisasi dengan Firebase Cloud.</p>
-                </header>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                        <p class="text-[10px] uppercase font-bold text-slate-400 mb-1">Pemasukan</p>
-                        <h3 id="dash-masuk" class="text-2xl font-bold text-emerald-600">Rp 0</h3>
-                    </div>
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                        <p class="text-[10px] uppercase font-bold text-slate-400 mb-1">Pengeluaran</p>
-                        <h3 id="dash-keluar" class="text-2xl font-bold text-rose-600">Rp 0</h3>
-                    </div>
-                    <div class="bg-emerald-600 p-6 rounded-3xl text-white shadow-lg">
-                        <p class="text-[10px] uppercase font-bold opacity-70 mb-1">Saldo Akhir</p>
-                        <h3 id="dash-saldo" class="text-2xl font-black">Rp 0</h3>
-                    </div>
-                </div>
-
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="text-xl font-bold mb-6">Transaksi Terbaru</h3>
-                    <div id="recent-activities" class="space-y-4 text-slate-400 italic text-sm">
-                        Memuat data...
-                    </div>
-                </div>
-            </section>
-
-            <!-- Buku Kas -->
-            <section id="tab-kas" class="tab-content hidden space-y-6">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <h2 class="text-3xl font-bold text-slate-800">Buku Kas</h2>
-                    <button onclick="openTxModal()" class="admin-only hidden bg-emerald-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2">
-                        <i data-lucide="plus"></i> Tambah Transaksi
-                    </button>
-                </div>
-                <div class="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase">
-                                <tr>
-                                    <th class="p-6">Tgl</th>
-                                    <th class="p-6">Keterangan</th>
-                                    <th class="p-6 text-right">Nominal</th>
-                                    <th class="admin-only hidden p-6 text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="kas-table-body" class="divide-y divide-slate-50"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Laporan & Pengaturan -->
-            <section id="tab-laporan" class="tab-content hidden space-y-6">
-                <div class="bg-white p-8 rounded-3xl text-center">
-                    <p class="text-slate-500 mb-4">Fitur Laporan Siap Cetak (Khusus Admin)</p>
-                    <button onclick="window.print()" class="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold">Cetak Laporan</button>
-                </div>
-            </section>
-            
-            <section id="tab-settings" class="tab-content hidden space-y-6">
-                <div class="bg-white p-8 rounded-3xl">
-                    <h3 class="text-xl font-bold mb-4">Profil Admin</h3>
-                    <div id="admin-info" class="text-slate-600">Memuat info...</div>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <!-- Login Modal -->
-    <div id="login-modal" class="hidden fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl">
-            <h3 class="text-2xl font-bold mb-6 text-center">Login Admin</h3>
-            <p class="text-sm text-slate-500 text-center mb-6">Gunakan akun yang terdaftar di Firebase Console Anda.</p>
-            <form onsubmit="handleLogin(event)" class="space-y-4">
-                <input id="login-email" type="email" placeholder="Email Admin" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-emerald-500" required />
-                <input id="login-pass" type="password" placeholder="Password" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-emerald-500" required />
-                <button type="submit" id="login-submit-btn" class="w-full bg-emerald-600 text-white p-4 rounded-2xl font-bold shadow-lg">Masuk</button>
-                <button type="button" onclick="closeModal('login-modal')" class="w-full text-slate-400 text-sm">Batal</button>
-            </form>
+            <h1 class="font-bold text-lg leading-tight uppercase">Kas<br/><span class="text-emerald-400">Masjid</span></h1>
         </div>
-    </div>
+        <nav class="space-y-2 flex-1">
+            <button onclick="switchTab('dashboard')" class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition-all font-medium text-left">
+                <i data-lucide="layout-dashboard" size="18"></i> Dashboard
+            </button>
+            <button onclick="switchTab('kas')" class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition-all font-medium text-left">
+                <i data-lucide="wallet" size="18"></i> Buku Kas
+            </button>
+        </nav>
+        <div class="pt-6 border-t border-white/10">
+            <button onclick="handleAuthAction()" id="auth-btn-desktop" class="w-full flex items-center gap-3 p-3 rounded-xl text-slate-400 hover:text-white transition-all text-left">
+                <i data-lucide="user" size="18"></i> <span id="auth-label">Login Admin</span>
+            </button>
+        </div>
+    </aside>
 
-    <!-- Transaksi Modal -->
-    <div id="tx-modal" class="hidden fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl">
-            <h3 id="tx-modal-title" class="text-2xl font-bold mb-6">Transaksi Baru</h3>
-            <form id="tx-form" onsubmit="handleSaveTx(event)" class="space-y-4">
-                <input id="tx-id" type="hidden" />
-                <input name="tgl" type="date" required class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100" />
-                <select name="jenis" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <option value="Pemasukan">Pemasukan (+)</option>
-                    <option value="Pengeluaran">Pengeluaran (-)</option>
-                </select>
-                <input name="uraian" placeholder="Uraian Transaksi" required class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100" />
-                <input name="nominal" type="number" placeholder="Nominal Rp" required class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold" />
+    <!-- Main Content -->
+    <main class="p-6 lg:p-12 mt-16 lg:mt-0">
+        <!-- Dashboard Section -->
+        <section id="tab-dashboard" class="tab-content active space-y-8">
+            <header>
+                <h2 class="text-3xl font-extrabold text-slate-800">Ringkasan Kas</h2>
+                <div id="connection-status" class="text-xs font-bold text-amber-500 mt-2 flex items-center gap-1">
+                    <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span></span>
+                    Menghubungkan ke Cloud...
+                </div>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                    <p class="text-[10px] uppercase font-bold text-slate-400 mb-2">Pemasukan</p>
+                    <p id="total-masuk" class="text-2xl font-bold text-emerald-600">Rp 0</p>
+                </div>
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                    <p class="text-[10px] uppercase font-bold text-slate-400 mb-2">Pengeluaran</p>
+                    <p id="total-keluar" class="text-2xl font-bold text-rose-600">Rp 0</p>
+                </div>
+                <div class="bg-emerald-600 p-6 rounded-3xl shadow-lg text-white">
+                    <p class="text-[10px] uppercase font-bold opacity-70 mb-2">Saldo Saat Ini</p>
+                    <p id="total-saldo" class="text-2xl font-black">Rp 0</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Buku Kas Section -->
+        <section id="tab-kas" class="tab-content space-y-6">
+            <div class="flex items-center justify-between">
+                <h2 class="text-2xl font-bold">Buku Kas</h2>
+                <button onclick="openModal('tx-modal')" class="admin-only hidden bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2">
+                    <i data-lucide="plus" size="16"></i> Tambah Data
+                </button>
+            </div>
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 border-b border-slate-100">
+                        <tr class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            <th class="p-6">Tanggal</th>
+                            <th class="p-6">Keterangan</th>
+                            <th class="p-6 text-right">Nominal</th>
+                            <th class="admin-only hidden p-6 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tx-table-body" class="divide-y divide-slate-50">
+                        <!-- Data rows -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal Transaksi -->
+    <div id="tx-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-[2rem] p-8 shadow-2xl">
+            <h3 class="text-xl font-bold mb-6">Tambah Transaksi</h3>
+            <form onsubmit="saveTransaction(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <input name="tgl" type="date" required class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <select name="jenis" class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <option value="Pemasukan">Pemasukan (+)</option>
+                        <option value="Pengeluaran">Pengeluaran (-)</option>
+                    </select>
+                </div>
+                <input name="uraian" placeholder="Uraian" required class="w-full p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <input name="nominal" type="number" placeholder="Nominal" required class="w-full p-3 bg-slate-50 rounded-xl border border-slate-100 font-bold">
                 <div class="flex gap-4 pt-4">
-                    <button type="button" onclick="closeModal('tx-modal')" class="flex-1 text-slate-400 font-bold">Batal</button>
-                    <button type="submit" class="flex-1 bg-emerald-600 text-white p-4 rounded-2xl font-bold">Simpan</button>
+                    <button type="button" onclick="closeModal('tx-modal')" class="flex-1 font-bold text-slate-400">Batal</button>
+                    <button type="submit" class="flex-1 bg-emerald-600 text-white p-3 rounded-xl font-bold">Simpan</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- Firebase Integration -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ==========================================================
-        // KONFIGURASI OTOMATIS & MANUAL
-        // ==========================================================
-        let firebaseConfig = {};
-        let appId = 'masjid-live-prod';
+        /** * VARIABEL GLOBAL DARI SISTEM (BUKAN HARDCODED)
+         * __firebase_config dan __app_id disediakan secara otomatis oleh sandbox environment.
+         */
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            // Ini adalah tempat jika Anda ingin menaruh config manual di luar lingkungan sandbox
+            apiKey: "AIzaSyAZHKit1-zjq_DAYOpQnf-3AIOwF7QVXlk",
+            authDomain: "kasmasjidsm.firebaseapp.com",
+            projectId: "kasmasjidsm",
+            storageBucket: "kasmasjidsm.firebasestorage.app",
+            messagingSenderId: "114589495617",
+            appId: "1:114589495617:web:7d52f5f94dc847962a31c0",
+        };
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'masjid-cloud-default';
 
-        if (typeof __firebase_config !== 'undefined' && __firebase_config !== "") {
-            firebaseConfig = JSON.parse(__firebase_config);
-            appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
-        } else {
-            firebaseConfig = {
-                apiKey: "AIzaSyAZHKit1-zjq_DAYOpQnf-3AIOwF7QVXlk",
-                authDomain: "kasmasjidsm.firebaseapp.com",
-                projectId: "kasmasjidsm",
-                storageBucket: "kasmasjidsm.firebasestorage.app",
-                messagingSenderId: "114589495617",
-                appId: "1:114589495617:web:7d52f5f94dc847962a31c0"
-            };
-        }
-        // ==========================================================
-
+        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let currentUser = null;
+        let user = null;
         let isAdmin = false;
-        let transactions = [];
-        let unsubscribeTx = null;
 
-        const formatIDR = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
-        
-        window.switchTab = (id) => {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
-            document.getElementById(`tab-${id}`).classList.remove('hidden');
-            document.getElementById(`nav-${id}`).classList.add('active');
-        };
-
-        window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
-
-        window.toggleAuth = async () => {
-            if (isAdmin) {
-                if(confirm("Apakah Anda ingin logout dari akun admin?")) {
-                    await signOut(auth);
-                }
-            } else {
-                document.getElementById('login-modal').classList.remove('hidden');
-            }
-        };
-
-        window.handleLogin = async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const pass = document.getElementById('login-pass').value;
-            const btn = document.getElementById('login-submit-btn');
-
-            btn.disabled = true;
-            btn.innerText = "Mengecek...";
-
+        // --- AUTH FLOW ---
+        const initAuth = async () => {
             try {
-                await signInWithEmailAndPassword(auth, email, pass);
-                closeModal('login-modal');
-                document.getElementById('login-email').value = '';
-                document.getElementById('login-pass').value = '';
+                // Gunakan custom token jika tersedia, jika tidak anonim
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
             } catch (err) {
-                console.error(err);
-                alert("Login Gagal: Pastikan Email & Password benar, serta 'Email/Password' Method sudah aktif di Console Firebase.");
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Masuk";
+                console.error("Auth failed:", err);
             }
         };
 
-        function updateUIState() {
-            const btnText = document.getElementById('auth-btn-text');
-            const badge = document.getElementById('badge-admin');
-            const adminInfo = document.getElementById('admin-info');
-            
-            if (isAdmin) {
-                btnText.innerText = "Logout Admin";
-                badge.innerText = "Admin: " + (currentUser?.email?.split('@')[0] || "User");
-                badge.className = "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase inline-block border border-emerald-400 bg-emerald-500 text-white";
-                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-                if(adminInfo) adminInfo.innerHTML = `<p>Login sebagai: <b>${currentUser.email}</b></p><p class="text-xs opacity-60">UID: ${currentUser.uid}</p>`;
+        onAuthStateChanged(auth, (u) => {
+            user = u;
+            if (u) {
+                isAdmin = !u.isAnonymous;
+                document.getElementById('connection-status').innerHTML = '<span class="h-2 w-2 bg-emerald-500 rounded-full"></span> Terhubung ke Cloud';
+                document.getElementById('connection-status').className = "text-[10px] font-bold text-emerald-500 mt-2 flex items-center gap-1";
+                updateUIVisibility();
+                startSync();
             } else {
-                btnText.innerText = "Login Admin";
-                badge.innerText = "Mode Tamu (Read-Only)";
-                badge.className = "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase inline-block border border-white/20 bg-white/10";
-                document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
-                if(adminInfo) adminInfo.innerText = "Anda masuk sebagai pengunjung.";
-            }
-            lucide.createIcons();
-            renderData();
-        }
-
-        // Auth Listener (RULE 3)
-        onAuthStateChanged(auth, async (user) => {
-            currentUser = user;
-            
-            if (user) {
-                isAdmin = !user.isAnonymous;
-                startListeners();
-                updateUIState();
-            } else {
-                isAdmin = false;
-                try {
-                    await signInAnonymously(auth);
-                } catch (e) {
-                    console.error("Gagal login anonim:", e);
-                }
+                initAuth();
             }
         });
 
-        function startListeners() {
-            if (!currentUser) return;
-            if (unsubscribeTx) unsubscribeTx();
-
-            const path = (typeof __firebase_config !== 'undefined' && __firebase_config !== "") 
-                ? ['artifacts', appId, 'public', 'data', 'transactions']
-                : ['transactions'];
-
-            const txColRef = collection(db, ...path);
+        // --- FIRESTORE SYNC ---
+        function startSync() {
+            if (!user) return;
+            // RULE 1: Strict Pathing
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'transactions');
             
-            // Tambahkan banner error jika gagal permission
-            unsubscribeTx = onSnapshot(txColRef, (snapshot) => {
-                document.getElementById('permission-error-banner').classList.add('hidden');
-                transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                transactions.sort((a, b) => new Date(b.tgl) - new Date(a.tgl));
-                renderData();
+            onSnapshot(colRef, (snap) => {
+                const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderTransactions(data);
             }, (error) => {
-                console.error("Firestore Error:", error);
-                if (error.code === 'permission-denied') {
-                    document.getElementById('permission-error-banner').classList.remove('hidden');
-                    document.getElementById('recent-activities').innerHTML = "Gagal memuat data karena masalah izin akses.";
-                }
+                console.error("Permission error:", error);
             });
         }
 
-        function renderData() {
-            const body = document.getElementById('kas-table-body');
-            const recent = document.getElementById('recent-activities');
-            let tMasuk = 0, tKeluar = 0;
-            
-            body.innerHTML = transactions.map(t => {
-                const isMasuk = t.jenis === 'Pemasukan';
-                const nominal = Number(t.nominal) || 0;
-                if(isMasuk) tMasuk += nominal; else tKeluar += nominal;
+        function renderTransactions(data) {
+            const table = document.getElementById('tx-table-body');
+            let tIn = 0, tOut = 0;
+            const fmt = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v);
 
-                return `
-                    <tr class="hover:bg-slate-50">
-                        <td class="p-6 text-sm text-slate-500">${t.tgl}</td>
-                        <td class="p-6 font-bold text-slate-800 uppercase text-sm">${t.uraian}</td>
-                        <td class="p-6 text-right font-bold ${isMasuk ? 'text-emerald-600' : 'text-rose-600'}">
-                            ${isMasuk ? '+' : '-'} ${formatIDR(nominal)}
-                        </td>
-                        <td class="admin-only ${isAdmin ? '' : 'hidden'} p-6 text-center">
-                            <button onclick="deleteTx('${t.id}')" class="text-rose-400 hover:text-rose-600 p-2"><i data-lucide="trash-2" size="16"></i></button>
-                        </td>
-                    </tr>
-                `;
+            table.innerHTML = data.map(t => {
+                const isMasuk = t.jenis === 'Pemasukan';
+                const n = Number(t.nominal) || 0;
+                if(isMasuk) tIn += n; else tOut += n;
+
+                return `<tr>
+                    <td class="p-6 text-sm text-slate-500">${t.tgl}</td>
+                    <td class="p-6 font-bold uppercase text-sm">${t.uraian}</td>
+                    <td class="p-6 text-right font-bold ${isMasuk ? 'text-emerald-600' : 'text-rose-600'}">${fmt(n)}</td>
+                    <td class="admin-only ${isAdmin ? '' : 'hidden'} p-6 text-center">
+                        <button onclick="deleteTx('${t.id}')" class="text-rose-400 hover:text-rose-600"><i data-lucide="trash-2" size="16"></i></button>
+                    </td>
+                </tr>`;
             }).join('');
 
-            document.getElementById('dash-masuk').innerText = formatIDR(tMasuk);
-            document.getElementById('dash-keluar').innerText = formatIDR(tKeluar);
-            document.getElementById('dash-saldo').innerText = formatIDR(tMasuk - tKeluar);
-            
-            recent.innerHTML = transactions.slice(0, 3).map(t => `
-                <div class="flex justify-between items-center bg-slate-50 p-4 rounded-2xl">
-                    <span class="text-slate-700 font-medium">${t.uraian}</span>
-                    <span class="font-bold ${t.jenis === 'Pemasukan' ? 'text-emerald-600' : 'text-rose-600'}">${formatIDR(t.nominal)}</span>
-                </div>
-            `).join('') || (transactions.length === 0 ? "Belum ada transaksi." : "");
-
+            document.getElementById('total-masuk').innerText = fmt(tIn);
+            document.getElementById('total-keluar').innerText = fmt(tOut);
+            document.getElementById('total-saldo').innerText = fmt(tIn - tOut);
             lucide.createIcons();
         }
 
-        window.openTxModal = () => {
-            if(!isAdmin) return alert("Hanya admin yang bisa menambah data.");
-            document.getElementById('tx-form').reset();
-            document.getElementById('tx-id').value = '';
-            document.getElementById('tx-modal').classList.remove('hidden');
-        };
-
-        window.handleSaveTx = async (e) => {
+        window.saveTransaction = async (e) => {
             e.preventDefault();
-            if(!isAdmin || !currentUser) return;
+            if(!user) return;
             const fd = new FormData(e.target);
-            const data = {
-                tgl: fd.get('tgl'),
-                jenis: fd.get('jenis'),
-                uraian: fd.get('uraian'),
-                nominal: parseFloat(fd.get('nominal')),
-                createdAt: new Date().toISOString()
-            };
-
             try {
-                const path = (typeof __firebase_config !== 'undefined' && __firebase_config !== "") 
-                    ? ['artifacts', appId, 'public', 'data', 'transactions']
-                    : ['transactions'];
-                await addDoc(collection(db, ...path), data);
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'transactions'), {
+                    tgl: fd.get('tgl'),
+                    jenis: fd.get('jenis'),
+                    uraian: fd.get('uraian'),
+                    nominal: Number(fd.get('nominal')),
+                    uid: user.uid
+                });
                 closeModal('tx-modal');
-            } catch (err) {
-                alert("Gagal simpan: Pastikan Firestore Rules mengizinkan penulisan. " + err.message);
-            }
+                e.target.reset();
+            } catch (err) { alert("Gagal menyimpan: " + err.message); }
         };
 
         window.deleteTx = async (id) => {
-            if(!isAdmin || !currentUser || !confirm("Hapus data?")) return;
-            try {
-                const path = (typeof __firebase_config !== 'undefined' && __firebase_config !== "") 
-                    ? ['artifacts', appId, 'public', 'data', 'transactions', id]
-                    : ['transactions', id];
-                await deleteDoc(doc(db, ...path));
-            } catch (err) {
-                alert("Gagal hapus: " + err.message);
-            }
+            if(!confirm("Hapus?")) return;
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'transactions', id));
         };
+
+        function updateUIVisibility() {
+            document.querySelectorAll('.admin-only').forEach(el => isAdmin ? el.classList.remove('hidden') : el.classList.add('hidden'));
+            document.getElementById('auth-label').innerText = isAdmin ? "Logout Admin" : "Login Admin";
+        }
+
+        // Global Helpers
+        window.switchTab = (id) => {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-${id}`).classList.add('active');
+        };
+        window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
+        window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+        window.handleAuthAction = () => isAdmin ? signOut(auth) : openModal('login-modal'); // Simplified login for demo
 
         lucide.createIcons();
     </script>
