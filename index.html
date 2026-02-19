@@ -32,6 +32,14 @@
             border-left-color: #059669; animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Tanda Tangan Preview Style */
+        .sig-preview {
+            max-height: 80px;
+            max-width: 150px;
+            object-fit: contain;
+            margin: 0 auto;
+        }
     </style>
 </head>
 <body class="text-slate-900">
@@ -116,10 +124,22 @@
             </div>
 
             <div id="view-reports" class="view-content hidden space-y-4">
-                <div class="bg-white p-4 rounded-xl border no-print flex gap-4">
-                    <select id="reportMonth" class="border p-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"></select>
-                    <button onclick="window.print()" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold">Cetak PDF</button>
+                <div class="bg-white p-4 rounded-xl border no-print flex flex-wrap gap-4 items-center">
+                    <div class="flex flex-col">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase mb-1">Pilih Bulan</label>
+                        <select id="reportMonth" class="border p-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"></select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase mb-1">Tanda Tangan Ketua</label>
+                        <input type="file" accept="image/*" onchange="uploadSignature(this, 'sigKetua')" class="text-xs">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase mb-1">Tanda Tangan Bendahara</label>
+                        <input type="file" accept="image/*" onchange="uploadSignature(this, 'sigBendahara')" class="text-xs">
+                    </div>
+                    <button onclick="window.print()" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold self-end">Cetak PDF</button>
                 </div>
+                
                 <!-- Area Cetak -->
                 <div id="printArea" class="bg-white p-8 border rounded-xl mx-auto max-w-[210mm]">
                     <div class="text-center mb-8">
@@ -145,16 +165,24 @@
                     <!-- Bagian Tanda Tangan -->
                     <div class="mt-12 text-sm">
                         <div class="text-center mb-10">
-                            <p id="reportLocationDate" class="font-medium">Kemranggen, 20 Februari 2024</p>
+                            <p id="reportLocationDate" class="font-medium">Jakarta, 20 Februari 2024</p>
                         </div>
                         <div class="grid grid-cols-2 gap-x-12 text-center">
                             <div>
-                                <p class="font-bold uppercase mb-20">Ketua Takmir,</p>
+                                <p class="font-bold uppercase mb-2">Ketua Takmir,</p>
+                                <div class="h-24 flex items-center justify-center">
+                                    <img id="sigKetua" src="" class="sig-preview hidden">
+                                    <div id="sigKetuaPlaceholder" class="h-full w-full"></div>
+                                </div>
                                 <p class="font-bold border-b border-slate-800 inline-block px-4">EKO PRAYITNO</p>
                                 
                             </div>
                             <div>
-                                <p class="font-bold uppercase mb-20">Bendahara,</p>
+                                <p class="font-bold uppercase mb-2">Bendahara,</p>
+                                <div class="h-24 flex items-center justify-center">
+                                    <img id="sigBendahara" src="" class="sig-preview hidden">
+                                    <div id="sigBendaharaPlaceholder" class="h-full w-full"></div>
+                                </div>
                                 <p class="font-bold border-b border-slate-800 inline-block px-4">YULIANTO</p>
                                 
                             </div>
@@ -312,6 +340,21 @@
 
         window.deleteT = async (id) => { if(confirm('Hapus?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'transactions', id)); };
         window.editT = (id) => openModal(id);
+
+        // Upload Signature Logic
+        window.uploadSignature = (input, targetId) => {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById(targetId);
+                    const placeholder = document.getElementById(targetId + 'Placeholder');
+                    img.src = e.target.result;
+                    img.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        };
 
         const renderReport = () => {
             const filterVal = document.getElementById('reportMonth').value;
