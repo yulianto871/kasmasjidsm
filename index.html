@@ -3,25 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Kas Masjid Cloud</title>
+    <title>Kas Masjid Cloud - Admin Auth</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .active-tab { color: #10b981; border-top: 2px solid #10b981; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        @media print {
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 pb-24 lg:pb-0 lg:pl-64">
 
-    <!-- Sidebar & Navigasi (Sama seperti sebelumnya) -->
-    <aside class="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 bg-emerald-900 text-white flex-col p-6 no-print">
+    <!-- Sidebar -->
+    <aside class="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 bg-emerald-900 text-white flex-col p-6">
         <div class="flex items-center gap-3 mb-10">
             <div class="w-8 h-8 bg-emerald-400 rounded-lg flex items-center justify-center">
                 <i data-lucide="mosque" class="text-emerald-900" size="20"></i>
@@ -37,21 +32,23 @@
             </button>
         </nav>
         <div class="pt-6 border-t border-white/10">
-            <button onclick="handleAuthAction()" id="auth-btn-desktop" class="w-full flex items-center gap-3 p-3 rounded-xl text-slate-400 hover:text-white transition-all text-left">
-                <i data-lucide="user" size="18"></i> <span id="auth-label">Login Admin</span>
+            <div id="user-info" class="mb-4 px-3 text-xs text-emerald-300 hidden">
+                Logged in as: <br><span id="user-email-display" class="font-bold text-white"></span>
+            </div>
+            <button onclick="handleAuthBtnClick()" id="auth-btn" class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition-all text-left">
+                <i data-lucide="log-in" id="auth-icon" size="18"></i> <span id="auth-label">Login Admin</span>
             </button>
         </div>
     </aside>
 
     <!-- Main Content -->
-    <main class="p-6 lg:p-12 mt-16 lg:mt-0">
-        <!-- Dashboard Section -->
+    <main class="p-6 lg:p-12">
+        <!-- Dashboard -->
         <section id="tab-dashboard" class="tab-content active space-y-8">
             <header>
                 <h2 class="text-3xl font-extrabold text-slate-800">Ringkasan Kas</h2>
-                <div id="connection-status" class="text-xs font-bold text-amber-500 mt-2 flex items-center gap-1">
-                    <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span></span>
-                    Menghubungkan ke Cloud...
+                <div id="sync-status" class="text-[10px] font-bold text-slate-400 mt-2 flex items-center gap-2 uppercase tracking-widest">
+                    <span class="flex h-2 w-2 rounded-full bg-slate-300"></span> Menghubungkan...
                 </div>
             </header>
 
@@ -65,146 +62,223 @@
                     <p id="total-keluar" class="text-2xl font-bold text-rose-600">Rp 0</p>
                 </div>
                 <div class="bg-emerald-600 p-6 rounded-3xl shadow-lg text-white">
-                    <p class="text-[10px] uppercase font-bold opacity-70 mb-2">Saldo Saat Ini</p>
+                    <p class="text-[10px] uppercase font-bold opacity-70 mb-2">Saldo</p>
                     <p id="total-saldo" class="text-2xl font-black">Rp 0</p>
                 </div>
             </div>
         </section>
 
-        <!-- Buku Kas Section -->
+        <!-- Buku Kas -->
         <section id="tab-kas" class="tab-content space-y-6">
             <div class="flex items-center justify-between">
                 <h2 class="text-2xl font-bold">Buku Kas</h2>
-                <button onclick="openModal('tx-modal')" class="admin-only hidden bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2">
+                <button onclick="openModal('tx-modal')" id="add-btn" class="hidden bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2">
                     <i data-lucide="plus" size="16"></i> Tambah Data
                 </button>
             </div>
             <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-slate-50 border-b border-slate-100">
-                        <tr class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                            <th class="p-6">Tanggal</th>
-                            <th class="p-6">Keterangan</th>
-                            <th class="p-6 text-right">Nominal</th>
-                            <th class="admin-only hidden p-6 text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tx-table-body" class="divide-y divide-slate-50">
-                        <!-- Data rows -->
-                    </tbody>
-                </table>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 border-b border-slate-100">
+                            <tr class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                <th class="p-6">Tanggal</th>
+                                <th class="p-6">Uraian</th>
+                                <th class="p-6 text-right">Nominal</th>
+                                <th class="admin-ui hidden p-6 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tx-table" class="divide-y divide-slate-50 text-sm">
+                            <!-- Data -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
     </main>
 
+    <!-- Modal Login -->
+    <div id="login-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl">
+            <h3 class="text-2xl font-bold text-center mb-2">Admin Login</h3>
+            <p class="text-slate-400 text-center text-sm mb-8">Gunakan akun Firebase Console Anda</p>
+            <form id="login-form" onsubmit="handleEmailLogin(event)" class="space-y-4">
+                <div>
+                    <label class="text-[10px] font-bold uppercase text-slate-400 ml-2">Email</label>
+                    <input type="email" id="login-email" required class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 focus:ring-2 ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold uppercase text-slate-400 ml-2">Password</label>
+                    <input type="password" id="login-password" required class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 focus:ring-2 ring-emerald-500 outline-none">
+                </div>
+                <button type="submit" id="submit-login" class="w-full bg-emerald-600 text-white p-4 rounded-2xl font-bold shadow-lg shadow-emerald-200 active:scale-95 transition-all">
+                    Masuk Sekarang
+                </button>
+                <button type="button" onclick="closeModal('login-modal')" class="w-full text-slate-400 text-sm font-medium mt-2">Batal</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal Transaksi -->
     <div id="tx-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-[2rem] p-8 shadow-2xl">
-            <h3 class="text-xl font-bold mb-6">Tambah Transaksi</h3>
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl">
+            <h3 class="text-xl font-bold mb-6">Input Kas Baru</h3>
             <form onsubmit="saveTransaction(event)" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
-                    <input name="tgl" type="date" required class="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <select name="jenis" class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <input name="tgl" type="date" required class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <select name="jenis" class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <option value="Pemasukan">Pemasukan (+)</option>
                         <option value="Pengeluaran">Pengeluaran (-)</option>
                     </select>
                 </div>
-                <input name="uraian" placeholder="Uraian" required class="w-full p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <input name="nominal" type="number" placeholder="Nominal" required class="w-full p-3 bg-slate-50 rounded-xl border border-slate-100 font-bold">
+                <input name="uraian" placeholder="Keterangan / Uraian" required class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <input name="nominal" type="number" placeholder="Nominal (Rp)" required class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 font-bold text-lg">
                 <div class="flex gap-4 pt-4">
                     <button type="button" onclick="closeModal('tx-modal')" class="flex-1 font-bold text-slate-400">Batal</button>
-                    <button type="submit" class="flex-1 bg-emerald-600 text-white p-3 rounded-xl font-bold">Simpan</button>
+                    <button type="submit" class="flex-1 bg-emerald-600 text-white p-4 rounded-2xl font-bold shadow-lg shadow-emerald-100">Simpan Data</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Firebase Integration -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        /** * VARIABEL GLOBAL DARI SISTEM (BUKAN HARDCODED)
-         * __firebase_config dan __app_id disediakan secara otomatis oleh sandbox environment.
-         */
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            // Ini adalah tempat jika Anda ingin menaruh config manual di luar lingkungan sandbox
-            apiKey: "AIzaSyAZHKit1-zjq_DAYOpQnf-3AIOwF7QVXlk",
-            authDomain: "kasmasjidsm.firebaseapp.com",
-            projectId: "kasmasjidsm",
-            storageBucket: "kasmasjidsm.firebasestorage.app",
-            messagingSenderId: "114589495617",
-            appId: "1:114589495617:web:7d52f5f94dc847962a31c0",
-        };
+        // Global State & Config
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'masjid-cloud-v1';
         
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'masjid-cloud-default';
-
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let user = null;
-        let isAdmin = false;
+        let currentUser = null;
+        let isRealAdmin = false;
 
-        // --- AUTH FLOW ---
-        const initAuth = async () => {
-            try {
-                // Gunakan custom token jika tersedia, jika tidak anonim
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (err) {
-                console.error("Auth failed:", err);
+        // --- AUTH LOGIC ---
+
+        const updateUI = (user) => {
+            currentUser = user;
+            // Anggap admin jika login via email (bukan anonim)
+            isRealAdmin = user && !user.isAnonymous;
+
+            const authLabel = document.getElementById('auth-label');
+            const authIcon = document.getElementById('auth-icon');
+            const userInfo = document.getElementById('user-info');
+            const userEmail = document.getElementById('user-email-display');
+            const adminElements = document.querySelectorAll('.admin-ui');
+            const addBtn = document.getElementById('add-btn');
+
+            if (isRealAdmin) {
+                authLabel.innerText = "Keluar Admin";
+                authIcon.setAttribute('data-lucide', 'log-out');
+                userInfo.classList.remove('hidden');
+                userEmail.innerText = user.email;
+                addBtn.classList.remove('hidden');
+            } else {
+                authLabel.innerText = "Login Admin";
+                authIcon.setAttribute('data-lucide', 'log-in');
+                userInfo.classList.add('hidden');
+                addBtn.classList.add('hidden');
             }
+
+            lucide.createIcons();
+            fetchData(); // Refresh table view
         };
 
-        onAuthStateChanged(auth, (u) => {
-            user = u;
-            if (u) {
-                isAdmin = !u.isAnonymous;
-                document.getElementById('connection-status').innerHTML = '<span class="h-2 w-2 bg-emerald-500 rounded-full"></span> Terhubung ke Cloud';
-                document.getElementById('connection-status').className = "text-[10px] font-bold text-emerald-500 mt-2 flex items-center gap-1";
-                updateUIVisibility();
-                startSync();
+        // Retry logic function
+        async function robustSignIn(fn, retries = 5) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    return await fn();
+                } catch (err) {
+                    if (i === retries - 1) throw err;
+                    await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
+                }
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                updateUI(user);
+                document.getElementById('sync-status').innerHTML = '<span class="flex h-2 w-2 rounded-full bg-emerald-500"></span> Live Sync Aktif';
             } else {
-                initAuth();
+                // Auto login anonim jika tidak ada user (agar tamu tetap bisa baca)
+                robustSignIn(() => signInAnonymously(auth));
             }
         });
 
-        // --- FIRESTORE SYNC ---
-        function startSync() {
-            if (!user) return;
-            // RULE 1: Strict Pathing
+        window.handleEmailLogin = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+            const btn = document.getElementById('submit-login');
+            
+            btn.disabled = true;
+            btn.innerText = "Memverifikasi...";
+
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                closeModal('login-modal');
+                e.target.reset();
+            } catch (err) {
+                let msg = "Login gagal. Cek email/password.";
+                if (err.code === 'auth/user-not-found') msg = "User tidak ditemukan.";
+                if (err.code === 'auth/wrong-password') msg = "Password salah.";
+                alert(msg);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Masuk Sekarang";
+            }
+        };
+
+        window.handleAuthBtnClick = () => {
+            if (isRealAdmin) {
+                if (confirm("Logout dari sesi admin?")) signOut(auth);
+            } else {
+                openModal('login-modal');
+            }
+        };
+
+        // --- DATA LOGIC ---
+
+        function fetchData() {
+            if (!auth.currentUser) return;
+
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'transactions');
             
             onSnapshot(colRef, (snap) => {
-                const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderTransactions(data);
-            }, (error) => {
-                console.error("Permission error:", error);
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderTable(list);
+            }, (err) => {
+                console.error("Firestore Error:", err);
             });
         }
 
-        function renderTransactions(data) {
-            const table = document.getElementById('tx-table-body');
-            let tIn = 0, tOut = 0;
+        function renderTable(data) {
+            const container = document.getElementById('tx-table');
             const fmt = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v);
+            
+            let tIn = 0, tOut = 0;
+            // Urutkan berdasarkan tanggal (Desc)
+            data.sort((a, b) => new Date(b.tgl) - new Date(a.tgl));
 
-            table.innerHTML = data.map(t => {
+            container.innerHTML = data.map(t => {
                 const isMasuk = t.jenis === 'Pemasukan';
                 const n = Number(t.nominal) || 0;
                 if(isMasuk) tIn += n; else tOut += n;
 
-                return `<tr>
-                    <td class="p-6 text-sm text-slate-500">${t.tgl}</td>
-                    <td class="p-6 font-bold uppercase text-sm">${t.uraian}</td>
-                    <td class="p-6 text-right font-bold ${isMasuk ? 'text-emerald-600' : 'text-rose-600'}">${fmt(n)}</td>
-                    <td class="admin-only ${isAdmin ? '' : 'hidden'} p-6 text-center">
-                        <button onclick="deleteTx('${t.id}')" class="text-rose-400 hover:text-rose-600"><i data-lucide="trash-2" size="16"></i></button>
+                return `<tr class="hover:bg-slate-50/50 transition-colors">
+                    <td class="p-6 text-slate-500 font-medium">${t.tgl}</td>
+                    <td class="p-6 font-bold text-slate-700">${t.uraian}</td>
+                    <td class="p-6 text-right font-bold ${isMasuk ? 'text-emerald-600' : 'text-rose-600'}">
+                        ${isMasuk ? '+' : '-'} ${fmt(n)}
+                    </td>
+                    <td class="${isRealAdmin ? '' : 'hidden'} p-6 text-center">
+                        <button onclick="deleteTx('${t.id}')" class="text-slate-300 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 transition-all">
+                            <i data-lucide="trash-2" size="18"></i>
+                        </button>
                     </td>
                 </tr>`;
             }).join('');
@@ -217,7 +291,8 @@
 
         window.saveTransaction = async (e) => {
             e.preventDefault();
-            if(!user) return;
+            if (!isRealAdmin) return alert("Hanya admin resmi yang bisa menambah data.");
+
             const fd = new FormData(e.target);
             try {
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'transactions'), {
@@ -225,31 +300,32 @@
                     jenis: fd.get('jenis'),
                     uraian: fd.get('uraian'),
                     nominal: Number(fd.get('nominal')),
-                    uid: user.uid
+                    createdAt: new Date().toISOString(),
+                    author: auth.currentUser.email
                 });
                 closeModal('tx-modal');
                 e.target.reset();
-            } catch (err) { alert("Gagal menyimpan: " + err.message); }
+            } catch (err) {
+                alert("Gagal menyimpan: " + err.message);
+            }
         };
 
         window.deleteTx = async (id) => {
-            if(!confirm("Hapus?")) return;
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'transactions', id));
+            if (!isRealAdmin) return;
+            if (confirm("Hapus data ini secara permanen?")) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'transactions', id));
+                } catch (err) { alert("Error: " + err.message); }
+            }
         };
 
-        function updateUIVisibility() {
-            document.querySelectorAll('.admin-only').forEach(el => isAdmin ? el.classList.remove('hidden') : el.classList.add('hidden'));
-            document.getElementById('auth-label').innerText = isAdmin ? "Logout Admin" : "Login Admin";
-        }
-
-        // Global Helpers
+        // --- UI HELPERS ---
         window.switchTab = (id) => {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.getElementById(`tab-${id}`).classList.add('active');
         };
         window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
         window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
-        window.handleAuthAction = () => isAdmin ? signOut(auth) : openModal('login-modal'); // Simplified login for demo
 
         lucide.createIcons();
     </script>
