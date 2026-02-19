@@ -10,7 +10,22 @@
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        @media print { .no-print { display: none !important; } }
+        
+        /* Pengaturan Cetak A4 dan Margin */
+        @media print { 
+            .no-print { display: none !important; } 
+            @page {
+                size: A4;
+                margin: 2cm;
+            }
+            body { background-color: white; }
+            #printArea { 
+                border: none !important; 
+                padding: 0 !important;
+                box-shadow: none !important;
+            }
+        }
+
         .spinner {
             border: 3px solid rgba(0, 0, 0, 0.1);
             width: 36px; height: 36px; border-radius: 50%;
@@ -105,24 +120,46 @@
                     <select id="reportMonth" class="border p-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"></select>
                     <button onclick="window.print()" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold">Cetak PDF</button>
                 </div>
-                <div id="printArea" class="bg-white p-8 border rounded-xl">
-                    <div class="text-center mb-6">
-                        <h2 class="text-xl font-bold uppercase">Laporan Keuangan Kas Masjid</h2>
-                        <p id="reportPeriodText" class="text-sm text-slate-500 uppercase font-bold">Januari 2024</p>
+                <!-- Area Cetak -->
+                <div id="printArea" class="bg-white p-8 border rounded-xl mx-auto max-w-[210mm]">
+                    <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold uppercase tracking-wide">Laporan Keuangan Kas Masjid</h2>
+                        <p id="reportPeriodText" class="text-sm text-slate-600 uppercase font-bold tracking-widest mt-1">Januari 2024</p>
+                        <hr class="mt-4 border-slate-800">
                     </div>
-                    <table class="w-full border-collapse border border-slate-800 text-xs">
+                    
+                    <table class="w-full border-collapse border border-slate-800 text-[11px]">
                         <thead>
                             <tr class="bg-slate-100">
                                 <th class="border border-slate-800 p-2">No</th>
                                 <th class="border border-slate-800 p-2">Tanggal</th>
-                                <th class="border border-slate-800 p-2 text-left">Uraian</th>
-                                <th class="border border-slate-800 p-2 text-right">Debet</th>
-                                <th class="border border-slate-800 p-2 text-right">Kredit</th>
+                                <th class="border border-slate-800 p-2 text-left">Uraian Transaksi</th>
+                                <th class="border border-slate-800 p-2 text-right">Debet (Masuk)</th>
+                                <th class="border border-slate-800 p-2 text-right">Kredit (Keluar)</th>
                                 <th class="border border-slate-800 p-2 text-right">Saldo</th>
                             </tr>
                         </thead>
                         <tbody id="reportTableBody"></tbody>
                     </table>
+
+                    <!-- Bagian Tanda Tangan -->
+                    <div class="mt-12 text-sm">
+                        <div class="text-center mb-10">
+                            <p id="reportLocationDate" class="font-medium">Jakarta, 20 Februari 2024</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-x-12 text-center">
+                            <div>
+                                <p class="font-bold uppercase mb-20">Ketua Takmir,</p>
+                                <p class="font-bold border-b border-slate-800 inline-block px-4">_______________________</p>
+                                <p class="text-xs mt-1">(Nama Ketua)</p>
+                            </div>
+                            <div>
+                                <p class="font-bold uppercase mb-20">Bendahara,</p>
+                                <p class="font-bold border-b border-slate-800 inline-block px-4">_______________________</p>
+                                <p class="text-xs mt-1">(Nama Bendahara)</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -156,8 +193,6 @@
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // === KONFIGURASI FIREBASE ANDA ===
-        // Ganti objek ini dengan config dari Firebase Console Project Settings
         const firebaseConfig = {
             apiKey: "AIzaSyAZHKit1-zjq_DAYOpQnf-3AIOwF7QVXlk",
             authDomain: "kasmasjidsm.firebaseapp.com",
@@ -166,7 +201,6 @@
             messagingSenderId: "114589495617",
             appId: "1:114589495617:web:7d52f5f94dc847962a31c0",
         };
-        // =================================
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -176,7 +210,6 @@
         let allTransactions = [];
         const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
-        // Auth Logic
         onAuthStateChanged(auth, (user) => {
             document.getElementById('loadingOverlay').classList.add('hidden');
             if (user) {
@@ -203,7 +236,6 @@
 
         window.logout = () => signOut(auth);
 
-        // Data Logic
         const loadData = () => {
             const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'transactions'));
             onSnapshot(q, (snapshot) => {
@@ -240,7 +272,6 @@
             });
         };
 
-        // Actions
         window.switchView = (v) => {
             document.querySelectorAll('.view-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`view-${v}`).classList.remove('hidden');
@@ -274,18 +305,17 @@
                 description: document.getElementById('tDesc').value,
                 amount: Number(document.getElementById('tAmount').value)
             };
-            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'transactions');
             if (id) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'transactions', id), data);
-            else await addDoc(colRef, data);
+            else await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'transactions'), data);
             closeModal();
         };
 
         window.deleteT = async (id) => { if(confirm('Hapus?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'transactions', id)); };
         window.editT = (id) => openModal(id);
 
-        // Reports
         const renderReport = () => {
-            const [y, m] = document.getElementById('reportMonth').value.split('-').map(Number);
+            const filterVal = document.getElementById('reportMonth').value;
+            const [y, m] = filterVal.split('-').map(Number);
             let bal = 0;
             const current = [];
             allTransactions.forEach(t => {
@@ -298,14 +328,18 @@
             });
 
             const body = document.getElementById('reportTableBody');
-            body.innerHTML = `<tr><td class="border border-slate-800 p-2 text-center">1</td><td class="border border-slate-800 p-2">-</td><td class="border border-slate-800 p-2 font-bold uppercase">SALDO BULAN LALU</td><td class="border border-slate-800 p-2">-</td><td class="border border-slate-800 p-2">-</td><td class="border border-slate-800 p-2 text-right font-bold">${bal.toLocaleString('id-ID')}</td></tr>`;
+            body.innerHTML = `<tr><td class="border border-slate-800 p-2 text-center">1</td><td class="border border-slate-800 p-2 text-center">-</td><td class="border border-slate-800 p-2 font-bold uppercase">SALDO BULAN LALU</td><td class="border border-slate-800 p-2 text-center">-</td><td class="border border-slate-800 p-2 text-center">-</td><td class="border border-slate-800 p-2 text-right font-bold">${bal.toLocaleString('id-ID')}</td></tr>`;
             
             let running = bal;
             current.forEach((t, i) => {
                 running += (t.type === 'Pemasukan' ? t.amount : -t.amount);
                 body.innerHTML += `<tr><td class="border border-slate-800 p-2 text-center">${i+2}</td><td class="border border-slate-800 p-2 text-center">${t.date}</td><td class="border border-slate-800 p-2 uppercase">${t.description}</td><td class="border border-slate-800 p-2 text-right">${t.type === 'Pemasukan' ? t.amount.toLocaleString('id-ID') : '-'}</td><td class="border border-slate-800 p-2 text-right">${t.type === 'Pengeluaran' ? t.amount.toLocaleString('id-ID') : '-'}</td><td class="border border-slate-800 p-2 text-right font-bold">${running.toLocaleString('id-ID')}</td></tr>`;
             });
+
+            const today = new Date();
+            const dateStr = `${today.getDate()} ${months[today.getMonth()]} ${today.getFullYear()}`;
             document.getElementById('reportPeriodText').innerText = `${months[m-1]} ${y}`;
+            document.getElementById('reportLocationDate').innerText = `Jakarta, ${dateStr}`;
         };
 
         const initFilter = () => {
